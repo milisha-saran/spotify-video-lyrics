@@ -2,12 +2,11 @@ const LYRICS_TAB_ID = "vl-lyrics-tab";
 const LYRICS_PANEL_ID = "vl-lyrics-panel";
 const SPOTIFY_TABS = { "queue-tab": "queue", "history-tab": "history" };
 
-function sidebarShown() {
-  return document.querySelector(".Root__right-sidebar-peekContent")?.getAttribute("aria-hidden") === "false";
-}
-
 function queuePanelOpen() {
-  return sidebarShown() && !!document.getElementById("queue-tab");
+  const peek = document.querySelector(".Root__right-sidebar-peekContent");
+  // The Queue button is pressed exactly when the Queue panel shows (NOTES.md section 3).
+  if (!peek) return !!document.querySelector('[data-testid="control-button-queue"][aria-pressed="true"]');
+  return peek.getAttribute("aria-hidden") === "false" && !!document.getElementById("queue-tab");
 }
 
 // `uri` is the track to fetch lyrics for: the audio track, even while its video plays.
@@ -41,6 +40,7 @@ export async function fetchLyrics(uri) {
 }
 
 export function moveVideoToMiddle() {
+  if (!currentTrackInfo().hasVideo) return;
   const history = Spicetify.Platform.History;
   const location = history.location;
   if (location.state?.cinemaState === "nowPlayingView") return;
@@ -66,7 +66,8 @@ export function exitCinemaIfOpen() {
 }
 
 export function showLyricsInMiddle() {
-  if (!currentTrackInfo().uri) return;
+  const info = currentTrackInfo();
+  if (!info.uri || info.hasVideo) return;
   const history = Spicetify.Platform.History;
   if (history.location.pathname !== "/lyrics") history.push("/lyrics");
 }
@@ -217,10 +218,25 @@ export function mountLyricsTab({ view, onPicked }) {
       if (tab === "lyrics") showLyrics();
       else document.getElementById(`${tab}-tab`)?.click();
     },
+    lyricsSelected: () => lyricsSelected,
+    deselectLyrics() {
+      lyricsSelected = false;
+      safeApply();
+    },
   };
 }
 
 export function selectTab(tab) {
-  if (!tabs || !queuePanelOpen()) return;
+  if (!tabs) return;
+  // "history" only flips the sidebar away from Lyrics; a user reading Queue keeps Queue.
+  if (tab === "history") {
+    if (!tabs.lyricsSelected()) return;
+    // With the panel closed, reopening Queue would otherwise show Lyrics next to /lyrics in the middle.
+    if (!queuePanelOpen()) {
+      tabs.deselectLyrics();
+      return;
+    }
+  }
+  if (!queuePanelOpen()) return;
   tabs.select(tab);
 }

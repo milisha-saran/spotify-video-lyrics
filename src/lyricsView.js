@@ -24,16 +24,24 @@ export function createLyricsView(doc, onSeek) {
   let lineEls = [];
   let shownIndex = -1;
 
+  function showMessage(text) {
+    parsed = null;
+    shownIndex = -1;
+    lineEls = [];
+    el.classList.remove("vl-synced");
+    const empty = doc.createElement("div");
+    empty.classList.add("vl-empty");
+    empty.textContent = text;
+    el.replaceChildren(empty);
+  }
+
   function setLyrics(next) {
     parsed = next;
     shownIndex = -1;
     lineEls = [];
     el.classList.toggle("vl-synced", !!next && next.synced);
     if (!next) {
-      const empty = doc.createElement("div");
-      empty.classList.add("vl-empty");
-      empty.textContent = "No lyrics for this song";
-      el.replaceChildren(empty);
+      showMessage("No lyrics for this song");
       return;
     }
     lineEls = next.lines.map((line) => {
@@ -62,5 +70,9 @@ export function createLyricsView(doc, onSeek) {
     }
   }
 
-  return { el, setLyrics, setPosition };
+  function showLoading() {
+    showMessage("Loading lyrics…");
+  }
+
+  return { el, setLyrics, setPosition, showLoading };
 }

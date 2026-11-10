@@ -85,6 +85,8 @@ function start() {
     try {
       const seq = ++trackSeq;
       let info = currentTrackInfo();
+      // Clear old lines now: clicking one would seek the new song to the old song's time.
+      view.showLoading();
       if (!info.hasVideo) run(["exitCinema"]);
       handle({ type: "track", hasVideo: info.hasVideo, idle: idle.isIdle() });
       // When skipping fast, songchange for a video fires before audio_association is loaded.

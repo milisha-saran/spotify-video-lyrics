@@ -69,3 +69,25 @@ test("new lyrics reset the scroll tracking", () => {
   view.setPosition(5200);
   assert.equal(view.el.children[1].scrolls.length, 1);
 });
+
+test("loading clears the old lines so they can no longer seek", () => {
+  const seeks = [];
+  const view = createLyricsView(createFakeDocument(), (ms) => seeks.push(ms));
+  view.setLyrics(synced);
+  const oldLine = view.el.children[0];
+  view.showLoading();
+  assert.equal(view.el.children.length, 1);
+  assert.ok(view.el.children[0].classList.contains("vl-empty"));
+  assert.equal(view.el.children[0].textContent, "Loading lyrics…");
+  assert.ok(!view.el.classList.contains("vl-synced"));
+  view.setPosition(5200);
+  assert.equal(oldLine.scrolls.length, 0);
+});
+
+test("lyrics replace the loading message", () => {
+  const view = createLyricsView(createFakeDocument(), () => {});
+  view.showLoading();
+  view.setLyrics(synced);
+  assert.equal(view.el.children.length, 2);
+  assert.equal(view.el.children[0].textContent, "a");
+});
