@@ -36,3 +36,16 @@ test("latestOnly drops stale results", async () => {
   assert.equal(await b, "NEW");
   assert.equal(await a, undefined);
 });
+test("latestOnly: a superseded call that rejects resolves undefined", async () => {
+  let fail; const slow = new Promise((_, rej) => (fail = rej));
+  const fetcher = uri => uri === "old" ? slow : Promise.resolve("NEW");
+  const get = latestOnly(fetcher);
+  const a = get("old"); const b = get("new");
+  fail(new Error("late failure"));
+  assert.equal(await b, "NEW");
+  assert.equal(await a, undefined);
+});
+test("latestOnly: the newest call's rejection still propagates", async () => {
+  const get = latestOnly(() => Promise.reject(new Error("boom")));
+  await assert.rejects(get("x"), /boom/);
+});

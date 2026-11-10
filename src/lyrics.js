@@ -32,7 +32,12 @@ export function latestOnly(fetcher) {
   let latestCall = 0;
   return async function fetchLatest(uri) {
     const thisCall = ++latestCall;
-    const result = await fetcher(uri);
-    return thisCall === latestCall ? result : undefined;
+    try {
+      const result = await fetcher(uri);
+      return thisCall === latestCall ? result : undefined;
+    } catch (error) {
+      if (thisCall !== latestCall) return undefined;
+      throw error;
+    }
   };
 }
