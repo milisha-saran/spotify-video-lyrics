@@ -52,6 +52,19 @@ export function moveVideoToMiddle() {
   });
 }
 
+// Spotify keeps cinema mode across tracks; with no video it shows its own
+// full-window lyrics there, hiding the page and the playbar (NOTES.md section 9).
+export function exitCinemaIfOpen() {
+  const history = Spicetify.Platform.History;
+  const location = history.location;
+  if (location.state?.cinemaState !== "nowPlayingView") return;
+  history.replace({
+    pathname: location.pathname,
+    search: location.search,
+    state: { ...location.state, cinemaState: "closed" },
+  });
+}
+
 export function showLyricsInMiddle() {
   if (!currentTrackInfo().uri) return;
   const history = Spicetify.Platform.History;

@@ -2,7 +2,7 @@ import { parseLyrics, latestOnly } from "./lyrics.js";
 import { createIdleTracker } from "./idle.js";
 import { createDirector } from "./director.js";
 import { createLyricsView } from "./lyricsView.js";
-import { currentTrackInfo, fetchLyrics, moveVideoToMiddle, showLyricsInMiddle, openQueuePanel, mountLyricsTab, selectTab } from "./spotify.js";
+import { currentTrackInfo, fetchLyrics, moveVideoToMiddle, exitCinemaIfOpen, showLyricsInMiddle, openQueuePanel, mountLyricsTab, selectTab } from "./spotify.js";
 
 function warn(err) {
   console.warn("[videoLyrics]", err);
@@ -33,7 +33,8 @@ function start() {
   let actionQueue = Promise.resolve();
 
   async function runAction(action) {
-    if (action === "moveVideoToMiddle") moveVideoToMiddle();
+    if (action === "exitCinema") exitCinemaIfOpen();
+    else if (action === "moveVideoToMiddle") moveVideoToMiddle();
     else if (action === "showLyricsInMiddle") showLyricsInMiddle();
     else if (action === "openQueuePanel") await openQueuePanel();
     else if (action && action.selectTab) selectTab(action.selectTab);
@@ -84,6 +85,7 @@ function start() {
     try {
       const seq = ++trackSeq;
       let info = currentTrackInfo();
+      if (!info.hasVideo) run(["exitCinema"]);
       handle({ type: "track", hasVideo: info.hasVideo, idle: idle.isIdle() });
       // When skipping fast, songchange for a video fires before audio_association is loaded.
       for (let i = 0; info.hasVideo && !info.uri && i < 20 && seq === trackSeq; i++) {
