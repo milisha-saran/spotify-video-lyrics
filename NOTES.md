@@ -9,25 +9,39 @@
   JS ran in the `https://xpui.app.spotify.com/index.html` page through the Chrome
   DevTools Protocol (`Runtime.evaluate`, `awaitPromise`, `userGesture: true`).
   Clicks were `element.click()` from JS.
-- Test track: "Fairytale of New York" (The Pogues).
-  Audio `spotify:track:3VTNVsTTu05dmTsVFrmGpK`, video `spotify:track:5AXDr9AJoUSXH80BBaBE7Y`.
+- Test tracks: "Fairytale of New York" (The Pogues), audio
+  `spotify:track:3VTNVsTTu05dmTsVFrmGpK`, video `spotify:track:5AXDr9AJoUSXH80BBaBE7Y`.
+  Audio-only track: "Please Come Home for Christmas - 2013 Remaster" (Eagles),
+  `spotify:track:3QIoEi8Enr9uHffwInGIsC` (no `video_association`).
+- "Pressed" below always means the attribute `aria-pressed="true"` on the button.
+- Anything marked **untested** was not observed. Do not treat it as known.
 
 ## Summary for Task 6
 
-| # | Need | Status | Recipe |
-|---|------|--------|--------|
-| 1 | Open Queue panel | CONFIRMED (fallback) | No panel API. Click `[data-testid="control-button-queue"]` only when its `aria-pressed` is `"false"`. |
-| 1b | Is Queue open? | CONFIRMED | `#Desktop_PanelContainer_Id[aria-label="Queue"]` exists AND sidebar is expanded (see 8). The button's `aria-pressed="true"` agrees. |
-| 2 | Tab row, content, active tab | CONFIRMED | Tab row `#Desktop_PanelContainer_Id [role="tablist"]`. Tabs `#queue-tab`, `#history-tab`. Panels `#queue-panel`, `#history-panel`. Active tab has `aria-selected="true"`. |
-| 3 | Select Recently played | CONFIRMED | `document.getElementById('history-tab').click()` |
-| 4 | Detect video | CONFIRMED | `Spicetify.Player.data.item.mediaType === "video"` |
-| 5 | Cinema mode in / detect | CONFIRMED (`replace`, not `push`) | `History.replace({...location, state: {...location.state, cinemaState: "nowPlayingView"}})`. Detect with `History.location.state?.cinemaState === "nowPlayingView"`. |
-| 6 | Video keeps playing in middle with Queue open | CONFIRMED | Video moves to the middle area and keeps playing. |
-| 7 | Navigate to `/lyrics` | CONFIRMED | `Spicetify.Platform.History.push('/lyrics')`. This exits cinema mode. |
-| 8 | Right sidebar container, shown/hidden | CONFIRMED, but not the planned attribute | Container `#Desktop_PanelContainer_Id`. Hidden when `.Root__right-sidebar-peek` lacks class `Root__right-sidebar-expanded`, and `.Root__right-sidebar-peekContent` has `aria-hidden="true"`. `[data-right-sidebar-hidden]` does NOT exist. |
-| 9 | Lyrics endpoint | CONFIRMED with the **audio** track id | `syncType: "LINE_SYNCED"` for the audio id. The video id returns `{code: 404, message: "Failed to fetch"}`. |
+| # | Need | Status | Canonical recipe |
+|---|------|--------|------------------|
+| 1 | Is the sidebar shown? | CONFIRMED | `document.querySelector('.Root__right-sidebar-peekContent')?.getAttribute('aria-hidden') === 'false'` |
+| 2 | Is the Queue panel open? | CONFIRMED | `!!document.getElementById('queue-tab') && <sidebar shown>` |
+| 3 | Open the Queue panel | CONFIRMED (no API) | If not open, click `[data-testid="control-button-queue"]`. |
+| 4 | Tab row, content, active tab | CONFIRMED | Tablist `#Desktop_PanelContainer_Id [role="tablist"]`. Tabs `#queue-tab`, `#history-tab`. Active tab has `aria-selected="true"`. |
+| 5 | Node to show Lyrics in | CONFIRMED | `document.getElementById('queue-panel').parentElement` (holds `#queue-panel` and `#history-panel`). Hide both panels, show the Lyrics node there. |
+| 6 | Select Recently played | CONFIRMED | `document.getElementById('history-tab').click()` |
+| 7 | Detect video (`hasVideo`) | CONFIRMED | `Spicetify.Player.data?.item?.mediaType === "video"` |
+| 8 | Put video in cinema mode | CONFIRMED | `History.replace({...location, state: {...location.state, cinemaState: "nowPlayingView"}})`. **Only call when `hasVideo`.** `History.push` does not work. |
+| 9 | Detect cinema mode | CONFIRMED | `Spicetify.Platform.History.location.state?.cinemaState === "nowPlayingView"` |
+| 10 | Video keeps playing in middle with Queue open | CONFIRMED | Video rect `[8, 8, 1026, 903]`, `currentTime` advancing. |
+| 11 | Native lyrics route | CONFIRMED | `Spicetify.Platform.History.push('/lyrics')`. It exits cinema mode, so use it **only for songs without a video**. |
+| 12 | Lyrics endpoint | CONFIRMED with the **audio** track id | `syncType: "LINE_SYNCED"`. While a video plays, use `item.metadata.audio_association`. The video id returns `{code: 404}`. |
 
-## Step 3.1: Panel API
+Not found: a panel API, `associated_video_id`, `[data-right-sidebar-hidden]`,
+`.NowPlayingView`, `[data-testid="NPV_Panel_OpenDiv"]`.
+
+Injected DOM (details in "Injected nodes"):
+- A node added next to the tabpanels survives tab switches but is removed when the panel closes.
+- A node added to the tablist is removed on every tab switch.
+- Task 6 must re-inject with a `MutationObserver`.
+
+## 1. Panel API (brief Step 3.1)
 
 `Object.keys(Spicetify.Platform)`: no key contains `Panel` or `RightSidebar`.
 Nearby keys: `History`, `PlayerAPI`, `PlaybackAPI`, `VideoAPI`, `BuddyFeedAPI`,
@@ -44,73 +58,156 @@ Nearby keys: `History`, `PlayerAPI`, `PlaybackAPI`, `VideoAPI`, `BuddyFeedAPI`,
   AssistedCuration: "assisted_curation", Messaging: "messaging" }
 ```
 
-Result: **NOT FOUND** (no panel API). Use the button fallback from 3.2.
+Result: **NOT FOUND** (no panel API). Use the Queue button (section 3).
 
-## Step 3.2: Queue button and opening the Queue panel
+## 2. Right sidebar: container and shown/hidden (brief item 8)
 
-Selector `[data-testid="control-button-queue"]`: **CONFIRMED**. `aria-label="Queue"`.
-It has `aria-pressed` and `data-active`, both `"true"` when the Queue panel shows.
+- Panel container: `aside#Desktop_PanelContainer_Id`. It is always in the DOM,
+  420px wide, and keeps its id for every panel.
+- Ancestors: `div.Root__right-sidebar-peekContent` < `div.Root__right-sidebar-overlayWrapper`.
+  Sibling root: `div.Root__right-sidebar-peek`.
 
-The button toggles. Observed sequence (JS `click()` each step):
+Observed in 8 states (open Queue, switch tab, close, hide, reopen):
 
-| Start state | Action | Result: `#Desktop_PanelContainer_Id` `aria-label` | `aria-pressed` |
-|---|---|---|---|
-| Queue open | click Queue button | `Now playing view` | `false` |
-| NPV open | click Queue button | `Queue` | `true` |
-| Queue open | click `[data-testid="PanelHeader_CloseButton"] button` | `Now playing view` | `false` |
-| Sidebar hidden | click Queue button | `Queue` (sidebar expands) | `true` |
+| | Shown | Hidden (after `Hide Now Playing view`) |
+|---|---|---|
+| `.Root__right-sidebar-peekContent` `aria-hidden` | `"false"` | `"true"` |
+| `.Root__right-sidebar-peekContent` `inert` attribute | absent | present |
+| `.Root__right-sidebar-peekContent` children | 1 | 1 (still mounted) |
+| `.Root__right-sidebar-peek` has class `Root__right-sidebar-expanded` | yes (width 420) | no (width 40) |
+| `aside#Desktop_PanelContainer_Id` width | 420 | 420 (still mounted, clipped) |
 
-Closing the Queue panel shows the Now Playing view; it does not hide the sidebar.
-NPV's own close button is `button[aria-label="Hide Now Playing view"]` (no testid).
-That hides the sidebar.
+**Primary detector:** `.Root__right-sidebar-peekContent[aria-hidden="false"]`.
+**Secondary:** `.Root__right-sidebar-peek.Root__right-sidebar-expanded`.
+
+When hidden, the sidebar content is **hidden, not unmounted**: the `aside` and its
+child stay in the DOM, and the wrapper gets `aria-hidden="true"` and `inert`.
+
+Class-name stability: in 1.3.8.620 the `Root__*` names are plain, readable names.
+Hashed classes in the same nodes look like `qoHJpiLKBxdnA85Ezk8q`. Whether
+`Root__*` names stay the same across Spotify versions is **untested**.
+
+`[data-right-sidebar-hidden]` does **NOT** exist in any state.
+`.NowPlayingView` and `[data-testid="NPV_Panel_OpenDiv"]`: **NOT FOUND**.
+`[data-testid="PanelHeader_CloseButton"]` exists only on the Queue panel.
+
+## 3. Opening the Queue panel and knowing it is open (brief Step 3.2)
+
+Button: `[data-testid="control-button-queue"]`. It is pressed (and `data-active="true"`)
+exactly when the Queue panel shows.
+
+**Canonical "Queue open" detector (locale-proof):**
+
+```js
+const sidebarShown = document.querySelector('.Root__right-sidebar-peekContent')
+  ?.getAttribute('aria-hidden') === 'false';
+const queueOpen = sidebarShown && !!document.getElementById('queue-tab');
+```
+
+Checked in 8 states. `#queue-tab` existed in every state where the Queue panel
+showed, and in no other state. The Queue button was pressed in exactly the same
+states, so it is an equivalent check.
+
+The `aside`'s `aria-label` (`"Queue"`, `"Now playing view"`) also names the panel.
+It is localized text. Do not use it as the detector.
+
+Observed transitions (JS `click()`):
+
+| Start | Action | Panel after | `#queue-tab` | Button pressed | Sidebar shown |
+|---|---|---|---|---|---|
+| Queue | Queue button | Now playing view | no | no | yes |
+| Now playing view | Queue button | Queue | yes | yes | yes |
+| Queue | `[data-testid="PanelHeader_CloseButton"] button` | Now playing view | no | no | yes |
+| Now playing view | `button[aria-label="Hide Now Playing view"]` | (NPV, hidden) | no | no | no |
+| Hidden | Queue button | Queue | yes | yes | yes |
+| Queue (opened from hidden) | Queue button | Now playing view, hidden | no | no | no |
+
+Closing the Queue panel always switched the panel to the Now Playing view. In every
+hidden state the hidden panel was the Now Playing view, not Queue. I found no way
+to reach "sidebar hidden with Queue as the current panel". So `#queue-tab` was
+never present while hidden. Other ways to hide the sidebar (keyboard shortcut,
+dragging the edge): **untested**.
 
 Recipe:
 
 ```js
-const btn = document.querySelector('[data-testid="control-button-queue"]');
-if (btn && btn.getAttribute('aria-pressed') !== 'true') btn.click();
+if (!queueOpen) document.querySelector('[data-testid="control-button-queue"]')?.click();
 ```
 
-## Step 3.3: Tab row, active tab, content area
+## 4. Queue panel: tab row, content area, active tab (brief Step 3.3)
 
-With the Queue panel open, the only `[role="tablist"]` in the document is inside the panel:
+With the Queue panel open, the only `[role="tablist"]` in the document is inside it:
 
 ```
-aside#Desktop_PanelContainer_Id[aria-label="Queue"]
+aside#Desktop_PanelContainer_Id
   div > div > div
     div[data-encore-id="tabs"]
-      div.e-101040-tab-list__container      (3 kids: overflow-button--start, tablist, overflow-button--end)
+      div.e-101040-tab-list__container      (overflow-button--start, tablist, overflow-button--end)
         div[data-encore-id="tabList"][role="tablist"][aria-label=""]
-          button#queue-tab  [role="tab"][aria-controls="queue-panel"]  [aria-selected="true"]  [data-encore-tab-id="queue-tab"]  "Queue"
-          button#history-tab[role="tab"][aria-controls="history-panel"][aria-selected="false"] [data-encore-tab-id="history-tab"] "Recently played"
+          button#queue-tab  [role="tab"][aria-controls="queue-panel"]  [aria-selected="true"]  [data-encore-tab-id="queue-tab"]
+          button#history-tab[role="tab"][aria-controls="history-panel"][aria-selected="false"] [data-encore-tab-id="history-tab"]
     span > div[data-testid="PanelHeader_CloseButton"] > button
-  div[data-overlayscrollbars="host"] > div[data-overlayscrollbars-viewport] > div > div
-    div#queue-panel  [role="tabpanel"][aria-labelledby="queue-tab"]   [data-encore-id="tabPanel"]
-    div#history-panel[role="tabpanel"][aria-labelledby="history-tab"] [data-encore-id="tabPanel"]
+  div[data-overlayscrollbars="host"] > div[data-overlayscrollbars-viewport] > div
+    div  <- CONTENT HOST = document.getElementById('queue-panel').parentElement
+      div#queue-panel  [role="tabpanel"][aria-labelledby="queue-tab"]   [data-encore-id="tabPanel"]
+      div#history-panel[role="tabpanel"][aria-labelledby="history-tab"] [data-encore-id="tabPanel"]
 ```
 
-- Active tab: `aria-selected="true"` and `tabIndex === 0`. Inactive: `"false"` and `-1`.
-- Both tabpanels are always in the DOM, neither has `hidden`, both `display: block`.
-  The inactive panel is **empty** (0 children, height 0). The active one holds the content.
-- The content area the Lyrics view should replace: the parent of `#queue-panel`
-  (it holds both tabpanels). It sits inside an OverlayScrollbars viewport.
-- Class names like `e-101040-tab-item` carry an Encore version prefix. Do not rely on them.
-  Use the ids, roles and `data-encore-id`.
-- The tablist's `aria-label` attribute is empty.
-- The `aside` keeps `#Desktop_PanelContainer_Id` for every panel. Its `aria-label` names
-  the current panel (`"Queue"`, `"Now playing view"`).
+- Active tab: `aria-selected="true"`, `tabIndex === 0`. Inactive: `"false"`, `-1`.
+- Both tabpanels are always in the DOM. Neither has `hidden`; both are `display: block`.
+  The inactive panel is **empty** (0 children, height 0).
+- **Lyrics view host (one line):** `document.getElementById('queue-panel').parentElement`.
+  To show Lyrics: append the Lyrics node there and hide `#queue-panel` and `#history-panel`.
+  To leave Lyrics: remove or hide the Lyrics node and un-hide both panels.
+  Hiding the panels with inline style while React owns them: **untested**.
+- The content host sits inside an OverlayScrollbars viewport, so it scrolls.
+- Class names like `e-101040-tab-item` carry an Encore version prefix. Use ids,
+  roles and `data-encore-id` instead.
 
-## Step 3.3b: Selecting Recently played
+## 5. Selecting Recently played, and tab persistence (brief Step 3.3)
 
 ```js
 document.getElementById('history-tab').click();
 ```
 
-Result: `history-tab:true`, `queue-tab:false`. `#history-panel` filled (1 child),
-`#queue-panel` emptied. `document.getElementById('queue-tab').click()` switches back.
-**CONFIRMED.**
+Result: `history-tab` selected, `#history-panel` filled, `#queue-panel` emptied.
+`document.getElementById('queue-tab').click()` switches back. **CONFIRMED.**
 
-## Step 3.4: Music video playback and metadata
+Persistence: with Recently played selected, closing the Queue panel (Queue button
+or the close button) and reopening it **resets to the Queue tab**. Seen twice.
+This also held when the panel was reopened from the hidden sidebar.
+
+## 6. Injected nodes vs. React re-renders
+
+Test: inject `div#probe-content` into the content host (next to the tabpanels) and
+`button#probe-tab[role="tab"]` into the tablist. Then switch tabs and close/reopen.
+
+| Step | `#probe-content` (content host) | `#probe-tab` (tablist) |
+|---|---|---|
+| After inject | present | present |
+| Switch to Recently played | **present** | **removed** |
+| Switch back to Queue | present | removed |
+| 3 s idle (queue list updating) | present | removed |
+| Close panel (Queue button) | **removed** | removed |
+| Reopen panel | absent | absent |
+
+No `console.error` output during the test.
+
+Why the tab is lost: on a tab switch React replaced the whole tab header.
+`[role="tablist"]` and `[data-encore-id="tabs"]` were new elements afterwards.
+A `span` appended to `[data-encore-id="tabs"]` was also removed.
+The content host kept the same element across tab switches.
+
+So Task 6 must:
+- re-insert its tab button after each tab switch and each panel open, and
+- re-insert its content node after each panel open.
+
+A `MutationObserver` on `#Desktop_PanelContainer_Id` (`childList`, `subtree`) will
+see these changes. Whether re-inserting causes flicker or React errors: **untested**.
+
+All probe nodes were removed after the test (`[id^=probe]` absent).
+
+## 7. Music video playback and metadata (brief Step 3.4)
 
 Before switching, the track played as audio:
 
@@ -119,9 +216,9 @@ uri: spotify:track:3VTNVsTTu05dmTsVFrmGpK, mediaType: "audio", metadata["media.t
 metadata.video_association: "spotify:track:5AXDr9AJoUSXH80BBaBE7Y", has_lyrics: present
 ```
 
-So **a track with a video plays as audio by default.** Spotify offers
-`button[aria-label="Switch to video"]` only inside the Now Playing view
-(`[data-testid="cover-art-button"]` in the playbar opens NPV).
+So **a track with a video plays as audio by default** (in this session, before
+any switch). `button[aria-label="Switch to video"]` shows only in the Now Playing
+view. `[data-testid="cover-art-button"]` in the playbar opens that view.
 
 After clicking "Switch to video":
 
@@ -130,57 +227,59 @@ uri: spotify:track:5AXDr9AJoUSXH80BBaBE7Y   (the URI changes to the video track)
 mediaType: "video", metadata["media.type"]: "video"
 metadata.audio_association: "spotify:track:3VTNVsTTu05dmTsVFrmGpK"
 metadata.original_video: "<32-hex id>", metadata.video_rendering_enabled: "true"
-metadata.has_lyrics: "false"   (wrong for lyrics purposes; the audio track has lyrics)
+metadata.has_lyrics: "false"   (wrong for lyrics; the audio track has lyrics)
 video_association: absent
 ```
 
-- `associated_video_id` does **NOT** exist. The audio item has `video_association`
-  (a track URI). The video item has `audio_association` (the audio track URI).
+- `associated_video_id` does **NOT** exist. The audio item has `video_association`.
+  The video item has `audio_association`.
 - The button label flips to `Switch to audio`.
-- On 1.3.8.620, clicking "Switch to video" immediately put the video into cinema
-  mode (`cinemaState: "nowPlayingView"`), not into the sidebar.
+- Clicking "Switch to video" put the video straight into cinema mode.
+- After the switch, video mode stuck. The next two tracks that had videos
+  ("Do They Know It's Christmas?", "Happy Xmas (War Is Over)") started as
+  `mediaType: "video"` without any click. A track with no video played as `"audio"`.
+  Whether this preference survives a Spotify restart: the video track was still
+  the current item after the restart, but a fresh track was **untested**.
 
-## Step 4: `hasVideo` decision
+## 8. `hasVideo` decision (brief Step 4)
 
-Tracks with a video play as audio until switched. So:
+A track can have a video and still play as audio. So `hasVideo` means
+"a video is actually playing":
 
 ```js
-hasVideo = Spicetify.Player.data?.item?.mediaType === "video";
+const item = Spicetify.Player.data?.item;
+const hasVideo = item?.mediaType === "video";
+const audioUri = hasVideo ? item.metadata.audio_association : item?.uri;  // use for lyrics
 ```
 
-For lyrics while a video plays, use the audio track id:
-
-```js
-const item = Spicetify.Player.data.item;
-const audioUri = item.mediaType === "video" ? item.metadata.audio_association : item.uri;
-```
-
-## Step 3.5: Cinema mode
+## 9. Cinema mode (brief Step 3.5)
 
 Observed `Spicetify.Platform.History.location`:
 
-| State | `location` | Video element rect (window 1470x919) |
+| State | `location.state.cinemaState` | Video element rect (window 1470x919) |
 |---|---|---|
-| Cinema (video in middle) | `{pathname: "/", state: {cinemaState: "nowPlayingView", referrer: "home"}}` | `[8, 8, 1026, 903]` with Queue open; `[133, 8, 1204, 903]` with NPV |
-| Minimized, NPV open | `state.cinemaState: "closed"` | `[1058, 128, 388, 291]`, inside `#Desktop_PanelContainer_Id`, `[data-testid="video-player-npv"]` present |
-| Minimized, Queue open | `state.cinemaState: "closed"` | `[16, 844, 75, 56]` (playbar cover-art thumbnail) |
+| Cinema, NPV panel | `"nowPlayingView"` | `[133, 8, 1204, 903]` |
+| Cinema, Queue panel | `"nowPlayingView"` | `[8, 8, 1026, 903]` |
+| Minimized, NPV panel | `"closed"` | `[1058, 128, 388, 291]` inside the `aside`; `[data-testid="video-player-npv"]` present |
+| Minimized, Queue panel | `"closed"` | `[16, 844, 75, 56]` (playbar cover-art thumbnail) |
 
-Values seen: `"nowPlayingView"` and `"closed"`.
+Values seen: `"nowPlayingView"`, `"closed"`, or no `cinemaState` key.
 
 Buttons:
-- In cinema: `button[aria-label="Minimize Now Playing view"]`. Minimizing does
+- In cinema: `button[aria-label="Minimize Now Playing view"]`. Minimizing fires
   `PUSH {referrer}` then `REPLACE {cinemaState: "closed", referrer}` (seen with `History.listen`).
-- In NPV with video: `button[aria-label="Expand Now Playing view"]`. Click goes to
-  `cinemaState: "nowPlayingView"`. **CONFIRMED.** This button is absent when the Queue panel shows.
+- In the NPV panel with video: `button[aria-label="Expand Now Playing view"]`.
+  Clicking it sets `cinemaState: "nowPlayingView"`. **CONFIRMED.**
+  This button does not exist while the Queue panel shows.
 
-`History.push` tests (all from `cinemaState: "closed"`):
+`History.push` (all from `cinemaState: "closed"`):
 - `History.push({pathname: <same>, state: {cinemaState: "nowPlayingView"}})`: **no effect**.
-  No PUSH event fired. Same for `History.push('/search', {cinemaState: "nowPlayingView"})`
-  while already on `/search`.
-- `History.push({pathname: "/search", state: {...}})` from `/`: navigates, but the state
-  is dropped (location has no `cinemaState`). Video stays in the playbar.
+  No PUSH event fired. `History.push('/search', {cinemaState: "nowPlayingView"})`
+  while on `/search` also did nothing.
+- `History.push({pathname: "/search", state: {...}})` from `/`: navigates but drops
+  the state. The video stays in the playbar.
 
-`History.replace` test: **works**, on `/` and on `/search`, with Queue open:
+`History.replace` **works**, on `/` and on `/search`, with the Queue panel open:
 
 ```js
 const H = Spicetify.Platform.History;
@@ -189,66 +288,49 @@ H.replace({
   search: H.location.search,
   state: { ...(H.location.state || {}), cinemaState: "nowPlayingView" },
 });
-// result: state.cinemaState === "nowPlayingView", video rect [8, 8, 1026, 903],
-//         "Minimize Now Playing view" button present, Queue panel still open.
+// state.cinemaState === "nowPlayingView", video rect [8, 8, 1026, 903],
+// "Minimize Now Playing view" present, Queue panel still open.
 ```
 
-Detect: `Spicetify.Platform.History.location.state?.cinemaState === "nowPlayingView"`.
-A DOM check that agrees: `!!document.querySelector('[aria-label="Minimize Now Playing view"]')`.
+**With an audio-only track** (Eagles track above, `mediaType: "audio"`, Queue open),
+the same `replace` also sets `cinemaState: "nowPlayingView"` and shows the Minimize
+button. There is no `<video>`. Instead Spotify shows its own lyrics view in the
+middle area, and `main` collapses to 0x0. In the screenshot the top bar and playbar
+were not visible, though the playbar element still had a normal rect. Clicking
+"Minimize Now Playing view" restored the normal layout (`cinemaState: "closed"`).
+This is not what the extension wants. **Only call it when `hasVideo`.**
 
-Navigation away (`History.push('/search')` or `/lyrics`) exits cinema mode.
+Detect: `Spicetify.Platform.History.location.state?.cinemaState === "nowPlayingView"`.
+DOM check that agrees: `!!document.querySelector('[aria-label="Minimize Now Playing view"]')`.
+
+Navigating away (`History.push('/search')` or `/lyrics`) exits cinema mode.
 The video shrinks to the playbar thumbnail and keeps playing.
 
-Fallback: when NPV shows the video, click `[aria-label="Expand Now Playing view"]`.
+Fallback: when the NPV panel shows the video, click `[aria-label="Expand Now Playing view"]`.
 
-## Step 3.6: Video in the middle while the Queue panel is open
+## 10. Video in the middle while the Queue panel is open (brief Step 3.6)
 
-From cinema mode with NPV, clicking the Queue button:
-- `aside` label becomes `Queue`, cinema state stays `nowPlayingView`.
-- Video rect shrinks from `[133, 8, 1204, 903]` to `[8, 8, 1026, 903]`, i.e. the
-  middle area left of the 420px sidebar (`aside` at x=1042).
-- `video.paused === false`; after `replace` back into cinema, `currentTime` moved
-  3.0 s in 3 s. Screenshot showed video on the left, Queue/Recently played on the right.
+From cinema mode with the NPV panel, clicking the Queue button:
+- The panel becomes Queue. `cinemaState` stays `"nowPlayingView"`.
+- The video rect changes from `[133, 8, 1204, 903]` to `[8, 8, 1026, 903]`: the area
+  left of the 420px sidebar (the `aside` starts at x=1042).
+- `video.paused === false`. After `replace` back into cinema, `currentTime` moved
+  3.0 s in 3 s. A screenshot showed the video on the left and Queue/Recently played on the right.
 - The left library sidebar is off-screen in cinema mode (rect x = -1026).
 
 **CONFIRMED.**
 
-## Step 3.7: Native lyrics route
+## 11. Native lyrics route (brief item 7)
 
 `Spicetify.Platform.History.push('/lyrics')`: `location.pathname === "/lyrics"`,
-`[data-testid="lyrics-button"]` gets `aria-pressed="true"`, lyrics render in
-`main[aria-label="Spotify"]` (rect `[357, 64, 677, 767]`).
-Side effect: cinema mode exits and the video drops to the playbar thumbnail
-(it keeps playing). **CONFIRMED.**
+`[data-testid="lyrics-button"]` becomes pressed, lyrics render in
+`main[aria-label="Spotify"]` (rect `[357, 64, 677, 767]`). **CONFIRMED.**
 
-## Step 3.8: Right sidebar container
+Side effect: cinema mode exits and the video drops to the playbar thumbnail (it
+keeps playing). So use `/lyrics` **only for songs without a video**. For video
+songs, show lyrics in the Queue panel instead.
 
-- Panel container: `aside#Desktop_PanelContainer_Id` (always present, 420px wide).
-- Ancestors: `div.Root__right-sidebar-peekContent[aria-hidden]` <
-  `div.Root__right-sidebar-overlayWrapper` < ... ; sibling root
-  `div.Root__right-sidebar-peek`.
-- Shown: `.Root__right-sidebar-peek` has class `Root__right-sidebar-expanded`;
-  `.Root__right-sidebar-peekContent[aria-hidden="false"]`.
-- Hidden (after `Hide Now Playing view`): `.Root__right-sidebar-peek` loses
-  `Root__right-sidebar-expanded` (width 40); `peekContent[aria-hidden="true"]`.
-  The `aside` stays in the DOM with its last label.
-- `[data-right-sidebar-hidden]`: **NOT FOUND** in any state.
-- `.NowPlayingView` class: **NOT FOUND**. `[data-testid="NPV_Panel_OpenDiv"]`: **NOT FOUND**.
-  `[data-testid="PanelHeader_CloseButton"]`: present on the Queue panel only.
-
-Recipe:
-
-```js
-const sidebarShown = !!document.querySelector('.Root__right-sidebar-peek.Root__right-sidebar-expanded');
-const queueOpen = sidebarShown &&
-  document.querySelector('#Desktop_PanelContainer_Id')?.getAttribute('aria-label') === 'Queue';
-```
-
-The `aria-label` is localized text. A locale-proof alternative:
-`!!document.getElementById('queue-tab')` (it exists only while the Queue panel shows),
-or the Queue button's `aria-pressed="true"`.
-
-## Step 3.9: Lyrics endpoint
+## 12. Lyrics endpoint (brief item 9)
 
 ```js
 await Spicetify.CosmosAsync.get(
@@ -261,13 +343,13 @@ await Spicetify.CosmosAsync.get(
   `startTimeMs` is a **string** (e.g. `"8160"`). **CONFIRMED.**
 - Video id `5AXDr9AJoUSXH80BBaBE7Y`: the promise resolves (no throw) to
   `{code: 404, message: "Failed to fetch", error, stack}`. Check for `lyrics` in the
-  response; do not rely on a throw.
+  response. Do not rely on a throw.
 
 ## Other notes
 
-- `Spicetify.Player.data` and `Spicetify.Platform` were ready within the first poll
-  after load.
+- `Spicetify.Player.data` and `Spicetify.Platform` were ready on the first poll after load.
+- Spotify starts paused after a restart (seen once, with the video track current).
 - `spicetify backup apply` on 1.3.8.620 warned "Could not detect Spotify build type
   in Spotify, skipping validation". Patching otherwise succeeded.
-- Spotify 1.3.8.620 auto-updated over the patched 1.3.4.258 on restart. Expect each
+- Spotify 1.3.8.620 replaced the patched 1.3.4.258 when it restarted. Expect each
   Spotify update to remove the patch until `spicetify backup apply` runs again.
