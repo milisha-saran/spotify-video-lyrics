@@ -228,8 +228,8 @@ export function mountLyricsTab({ view, onPicked }) {
 
 export function selectTab(tab) {
   if (!tabs) return;
-  // "history" only flips the sidebar away from Lyrics; a user reading Queue keeps Queue.
-  if (tab === "history") {
+  // "queue" only flips the sidebar away from Lyrics; a user reading Recently played keeps it.
+  if (tab === "queue") {
     if (!tabs.lyricsSelected()) return;
     // With the panel closed, reopening Queue would otherwise show Lyrics next to /lyrics in the middle.
     if (!queuePanelOpen()) {

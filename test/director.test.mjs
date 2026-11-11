@@ -18,13 +18,13 @@ test("video song while active waits for idle, and does not touch sidebar", () =>
 });
 test("no-video song flips sidebar now, middle waits for idle", () => {
   const d = createDirector();
-  assert.deepEqual(d.handle({ type: "track", hasVideo: false, idle: false }), [{ selectTab: "history" }]);
+  assert.deepEqual(d.handle({ type: "track", hasVideo: false, idle: false }), [{ selectTab: "queue" }]);
   assert.deepEqual(d.handle({ type: "tick", idle: true }), ["showLyricsInMiddle"]);
 });
 test("no-video song while idle does both at once, in action order", () => {
   const d = createDirector();
   assert.deepEqual(d.handle({ type: "track", hasVideo: false, idle: true }),
-    ["showLyricsInMiddle", { selectTab: "history" }]);
+    ["showLyricsInMiddle", { selectTab: "queue" }]);
 });
 test("only the latest track counts", () => {
   const d = createDirector();

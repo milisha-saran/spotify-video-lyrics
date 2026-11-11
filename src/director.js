@@ -19,8 +19,8 @@ export function createDirector() {
       manualTab = false;
       pending = event.hasVideo ? "video" : "lyrics";
       fireIfIdle(event.idle, actions);
-      // History tab is selected after the middle action so action order stays fixed.
-      if (!event.hasVideo) actions.push({ selectTab: "history" });
+      // Queue tab is selected after the middle action so action order stays fixed.
+      if (!event.hasVideo) actions.push({ selectTab: "queue" });
     } else if (event.type === "tick") {
       fireIfIdle(event.idle, actions);
     } else if (event.type === "tabPicked") {
