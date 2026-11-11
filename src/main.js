@@ -2,7 +2,7 @@ import { parseLyrics, latestOnly } from "./lyrics.js";
 import { createIdleTracker } from "./idle.js";
 import { createDirector } from "./director.js";
 import { createLyricsView } from "./lyricsView.js";
-import { currentTrackInfo, fetchLyrics, moveVideoToMiddle, exitCinemaIfOpen, showLyricsInMiddle, openQueuePanel, mountLyricsTab, selectTab } from "./spotify.js";
+import { currentTrackInfo, fetchLyrics, moveVideoToMiddle, exitCinemaIfOpen, showLyricsInMiddle, middleShowsLyrics, openQueuePanel, mountLyricsTab, selectTab } from "./spotify.js";
 
 function warn(err) {
   console.warn("[videoLyrics]", err);
@@ -92,7 +92,10 @@ function start() {
       // Clear old lines now: clicking one would seek the new song to the old song's time.
       view.showLoading();
       if (!info.hasVideo) run(["exitCinema"]);
-      handle({ type: "track", hasVideo: info.hasVideo, idle: idle.isIdle() });
+      // Lyrics filling the middle means the user is watching, not browsing,
+      // so a video can take their place without waiting for idle.
+      const watchingLyrics = info.hasVideo && middleShowsLyrics();
+      handle({ type: "track", hasVideo: info.hasVideo, idle: idle.isIdle() || watchingLyrics });
       // When skipping fast, songchange for a video fires before audio_association is loaded.
       for (let i = 0; info.hasVideo && !info.uri && i < 20 && seq === trackSeq; i++) {
         await new Promise((resolve) => setTimeout(resolve, 250));

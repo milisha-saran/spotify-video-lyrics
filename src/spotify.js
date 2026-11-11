@@ -66,6 +66,15 @@ export function exitCinemaIfOpen() {
   return true;
 }
 
+export function middleShowsLyrics() {
+  try {
+    return Spicetify.Platform.History.location.pathname === "/lyrics";
+  } catch (err) {
+    console.warn("[videoLyrics]", err);
+    return false;
+  }
+}
+
 export function showLyricsInMiddle() {
   const info = currentTrackInfo();
   if (!info.uri || info.hasVideo) return;
