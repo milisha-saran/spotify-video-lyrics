@@ -57,12 +57,13 @@ export function moveVideoToMiddle() {
 export function exitCinemaIfOpen() {
   const history = Spicetify.Platform.History;
   const location = history.location;
-  if (location.state?.cinemaState !== "nowPlayingView") return;
+  if (location.state?.cinemaState !== "nowPlayingView") return false;
   history.replace({
     pathname: location.pathname,
     search: location.search,
     state: { ...location.state, cinemaState: "closed" },
   });
+  return true;
 }
 
 export function showLyricsInMiddle() {

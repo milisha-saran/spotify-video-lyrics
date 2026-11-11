@@ -9,8 +9,8 @@ Built for macOS, Spotify 1.3.8.620 (auto-updated from 1.3.4.258) and Spicetify C
 The extension waits until you are idle before it moves things into the middle. You are idle after 30 seconds without a click, scroll, key press or page change in Spotify. You are also idle as soon as the Spotify window is not in front.
 
 - **A song plays as a video.** When you are idle, the video moves to the middle. The sidebar opens the Queue panel on the Lyrics tab.
-- **A song plays without a video.** The extension closes the video view right away, even while you use Spotify. If the sidebar shows the Lyrics tab, it flips to Queue. If you are reading Recently played, it stays there. When you are idle, the middle shows the song's lyrics.
-- It waits for idle before it moves the video or the lyrics into the middle. Closing the video view for a song without a video does not wait.
+- **A song plays without a video.** If the video was in the middle, its lyrics replace it right away. Otherwise the middle shows the lyrics once you are idle. If the sidebar shows the Lyrics tab, it flips to Queue. If you are reading Recently played, it stays there.
+- It waits for idle before it moves the video or the lyrics into the middle. Swapping a video in the middle for lyrics does not wait, because you were watching, not browsing.
 - It acts only when a video actually plays. Many songs have a video but play as audio. The extension treats them as songs without a video. Switch one song to its video once. In testing, Spotify then played the video for later songs that have one, for the rest of that session.
 - A tab you pick by hand stays until the next song.
 - Click a lyric line to jump to that point in the song.

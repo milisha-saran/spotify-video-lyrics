@@ -33,7 +33,11 @@ function start() {
   let actionQueue = Promise.resolve();
 
   async function runAction(action) {
-    if (action === "exitCinema") exitCinemaIfOpen();
+    // The middle was showing the video, not a page the user was browsing,
+    // so lyrics can take its place without waiting for idle.
+    if (action === "exitCinema") {
+      if (exitCinemaIfOpen()) showLyricsInMiddle();
+    }
     else if (action === "moveVideoToMiddle") moveVideoToMiddle();
     else if (action === "showLyricsInMiddle") showLyricsInMiddle();
     else if (action === "openQueuePanel") await openQueuePanel();
