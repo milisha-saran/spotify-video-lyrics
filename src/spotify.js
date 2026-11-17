@@ -14,14 +14,30 @@ export function currentTrackInfo() {
   try {
     const item = Spicetify.Player.data?.item;
     if (!item || typeof item.uri !== "string" || !item.uri.startsWith("spotify:track:")) {
-      return { uri: null, hasVideo: false };
+      return { uri: null, hasVideo: false, videoUri: null };
     }
     const hasVideo = item.mediaType === "video";
     const uri = hasVideo ? item.metadata?.audio_association : item.uri;
-    return { uri: typeof uri === "string" && uri.startsWith("spotify:track:") ? uri : null, hasVideo };
+    return {
+      uri: typeof uri === "string" && uri.startsWith("spotify:track:") ? uri : null,
+      hasVideo,
+      videoUri: hasVideo ? item.uri : null,
+    };
   } catch (err) {
     console.warn("[videoLyrics]", err);
-    return { uri: null, hasVideo: false };
+    return { uri: null, hasVideo: false, videoUri: null };
+  }
+}
+
+// Spotify's own analysis of a recording: about one segment per 0.3 s, each with pitch and timbre.
+export async function fetchAudioAnalysis(uri) {
+  try {
+    if (!uri) return null;
+    const analysis = await Spicetify.getAudioData(uri);
+    return Array.isArray(analysis?.segments) && analysis.segments.length ? analysis.segments : null;
+  } catch (err) {
+    console.warn("[videoLyrics]", err);
+    return null;
   }
 }
 

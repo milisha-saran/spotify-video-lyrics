@@ -21,3 +21,10 @@ test("built script asks LRCLIB when Spotify has no lyrics", () => {
   assert.match(code, /https:\/\/lrclib\.net\/api/);
   assert.match(code, /fetchLrclib\(currentTrackMeta\(\)\)/);
 });
+
+test("built script aligns lyrics to music videos", () => {
+  execFileSync(process.execPath, ["build.mjs"], { cwd: root });
+  const code = readFileSync(new URL("../dist/videoLyrics.js", import.meta.url), "utf8");
+  assert.match(code, /alignAudioToVideo\(/);
+  assert.match(code, /shiftLyricTimes\(spotify, /);
+});

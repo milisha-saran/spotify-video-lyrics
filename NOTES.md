@@ -360,6 +360,16 @@ await Spicetify.CosmosAsync.get(
 - `fetch("https://lrclib.net/api/...")` works from the xpui page: Spotify's CSP allows
   it and LRCLIB sends `access-control-allow-origin: *`. **CONFIRMED.**
 
+## 14. Music video vs. its audio track (Spotify 1.3.9.2055, 2026-11-17)
+
+- A video has no offset field. `item.metadata` has `audio_association`, its own
+  `original_video`, and the track metadata (`/metadata/4/track/<gid>`) shows its own
+  `original_audio` and ISRC. Video and audio are separate recordings. **CONFIRMED.**
+- `Spicetify.getAudioData(uri)` returns the audio analysis (`segments` with `start`,
+  `duration`, 12 `pitches`, 12 `timbre`) for both the video uri and the audio uri. **CONFIRMED.**
+- Offsets on seven videos ranged from -2 s to +51 s, with cut endings on some. Length
+  difference does not predict them. Details: `work/analysis/2026-11-17-video-lyrics-alignment/`.
+
 ## Other notes
 
 - `Spicetify.Player.data` and `Spicetify.Platform` were ready on the first poll after load.

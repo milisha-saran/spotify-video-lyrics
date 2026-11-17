@@ -1,9 +1,10 @@
 import { parseLyrics, latestOnly } from "./lyrics.js";
 import { fetchLrclib } from "./lrclib.js";
+import { alignAudioToVideo, shiftLyricTimes } from "./align.js";
 import { createIdleTracker } from "./idle.js";
 import { createDirector } from "./director.js";
 import { createLyricsView } from "./lyricsView.js";
-import { currentTrackInfo, currentTrackMeta, fetchLyrics, LYRICS_FETCH_FAILED, moveVideoToMiddle, exitCinemaIfOpen, showLyricsInMiddle, middleShowsLyrics, mountMiddleOverlay, openQueuePanel, mountLyricsTab, selectTab } from "./spotify.js";
+import { currentTrackInfo, currentTrackMeta, fetchLyrics, fetchAudioAnalysis, LYRICS_FETCH_FAILED, moveVideoToMiddle, exitCinemaIfOpen, showLyricsInMiddle, middleShowsLyrics, mountMiddleOverlay, openQueuePanel, mountLyricsTab, selectTab } from "./spotify.js";
 
 function warn(err) {
   console.warn("[videoLyrics]", err);
@@ -37,8 +38,24 @@ function start() {
     const body = await fetchLyrics(uri);
     if (body === LYRICS_FETCH_FAILED) return null;
     const spotify = parseLyrics(body);
-    if (spotify) return spotify;
+    if (spotify) {
+      const info = currentTrackInfo();
+      if (!spotify.synced || !info.hasVideo || info.uri !== uri) return spotify;
+      const map = await videoTimeMap(uri, info.videoUri);
+      return map ? shiftLyricTimes(spotify, map) : spotify;
+    }
     return fetchLrclib(currentTrackMeta());
+  }
+  // Spotify's lyrics for a video are timed to its audio track; the video has its own intro and edits.
+  const videoMaps = new Map();
+  async function videoTimeMap(audioUri, videoUri) {
+    if (!videoMaps.has(videoUri)) {
+      const [audioSegs, videoSegs] = await Promise.all([fetchAudioAnalysis(audioUri), fetchAudioAnalysis(videoUri)]);
+      const map = audioSegs && videoSegs ? alignAudioToVideo(audioSegs, videoSegs) : null;
+      if (!map) return null;
+      videoMaps.set(videoUri, map);
+    }
+    return videoMaps.get(videoUri);
   }
   const fetchLatest = latestOnly(fetchAny);
   let fallbackLyrics = null;
