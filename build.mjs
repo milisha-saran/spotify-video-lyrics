@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 
-const modules = ["lyrics", "idle", "director", "lyricsView", "spotify", "main"];
+const modules = ["lyrics", "lrclib", "idle", "director", "lyricsView", "spotify", "main"];
 
 const body = modules
   .map((name) => {
