@@ -3,7 +3,7 @@ import { fetchLrclib } from "./lrclib.js";
 import { createIdleTracker } from "./idle.js";
 import { createDirector } from "./director.js";
 import { createLyricsView } from "./lyricsView.js";
-import { currentTrackInfo, currentTrackMeta, fetchLyrics, moveVideoToMiddle, exitCinemaIfOpen, showLyricsInMiddle, middleShowsLyrics, mountMiddleOverlay, openQueuePanel, mountLyricsTab, selectTab } from "./spotify.js";
+import { currentTrackInfo, currentTrackMeta, fetchLyrics, LYRICS_FETCH_FAILED, moveVideoToMiddle, exitCinemaIfOpen, showLyricsInMiddle, middleShowsLyrics, mountMiddleOverlay, openQueuePanel, mountLyricsTab, selectTab } from "./spotify.js";
 
 function warn(err) {
   console.warn("[videoLyrics]", err);
@@ -34,7 +34,9 @@ function start() {
   const overlay = mountMiddleOverlay(middleView);
   // Spotify first; LRCLIB only when Spotify has nothing. One call, so latestOnly drops both together.
   async function fetchAny(uri) {
-    const spotify = parseLyrics(await fetchLyrics(uri));
+    const body = await fetchLyrics(uri);
+    if (body === LYRICS_FETCH_FAILED) return null;
+    const spotify = parseLyrics(body);
     if (spotify) return spotify;
     return fetchLrclib(currentTrackMeta());
   }

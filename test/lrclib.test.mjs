@@ -93,3 +93,15 @@ test("fetchLrclib caches per song", async () => {
   await fetchLrclib(meta, fetchFn);
   assert.equal(fetchFn.calls.length, 1);
 });
+test("fetchLrclib does not cache a server error as a miss", async () => {
+  let calls = 0;
+  const flaky = async () => {
+    calls++;
+    if (calls === 1) return { ok: false, status: 503, json: async () => ({}) };
+    return { ok: true, status: 200, json: async () => ({ duration: 70, plainLyrics: "back" }) };
+  };
+  const meta = { title: "Flaky", artist: "A", album: "B", durationSec: 70 };
+  assert.equal(await fetchLrclib(meta, flaky), null);
+  const second = await fetchLrclib(meta, flaky);
+  assert.equal(second?.lines[0].text, "back");
+});

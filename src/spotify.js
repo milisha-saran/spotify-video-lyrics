@@ -41,6 +41,10 @@ export function currentTrackMeta() {
   }
 }
 
+// A failed fetch is not "no lyrics": Spotify's own page may still load them,
+// and LRCLIB must not cover real Spotify lyrics.
+export const LYRICS_FETCH_FAILED = "lyrics-fetch-failed";
+
 export async function fetchLyrics(uri) {
   try {
     if (!uri) return null;
@@ -48,10 +52,13 @@ export async function fetchLyrics(uri) {
     const body = await Spicetify.CosmosAsync.get(
       `https://spclient.wg.spotify.com/color-lyrics/v2/track/${id}?format=json&vocalRemoval=false&market=from_token`,
     );
-    return body && body.lyrics ? body : null;
+    if (body && body.lyrics) return body;
+    // No lyrics comes back as an empty body or {code: 404} (NOTES.md sections 12, 13).
+    if (body && typeof body.code === "number" && body.code !== 404) return LYRICS_FETCH_FAILED;
+    return null;
   } catch (err) {
     console.warn("[videoLyrics]", err);
-    return null;
+    return LYRICS_FETCH_FAILED;
   }
 }
 

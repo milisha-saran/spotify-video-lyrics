@@ -56,7 +56,9 @@ export function toParsed(record) {
 
 async function lrclibJson(fetchFn, url) {
   const response = await fetchFn(url);
-  if (!response.ok) return null;
+  if (response.status === 404) return null;
+  // Throwing keeps server errors out of the cache; only real misses are cached.
+  if (!response.ok) throw new Error(`LRCLIB ${response.status}`);
   return response.json();
 }
 
