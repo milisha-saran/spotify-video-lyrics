@@ -65,3 +65,7 @@ test("shiftLyricTimes leaves unsynced lyrics and null alone", () => {
   assert.equal(shiftLyricTimes(plain, (s) => s + 1), plain);
   assert.equal(shiftLyricTimes(null, (s) => s + 1), null);
 });
+test("malformed segments give null instead of throwing", () => {
+  const bad = [{ start: 0, duration: 1 }];
+  assert.equal(alignAudioToVideo(bad, randomSegs(10, 1)), null);
+});

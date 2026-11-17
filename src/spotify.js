@@ -30,14 +30,20 @@ export function currentTrackInfo() {
 }
 
 // Spotify's own analysis of a recording: about one segment per 0.3 s, each with pitch and timbre.
-export async function fetchAudioAnalysis(uri) {
+export async function fetchAudioAnalysis(uri, timeoutMs = 5000) {
+  let timer;
   try {
     if (!uri) return null;
-    const analysis = await Spicetify.getAudioData(uri);
+    const timeout = new Promise((resolve) => {
+      timer = setTimeout(() => resolve(null), timeoutMs);
+    });
+    const analysis = await Promise.race([Spicetify.getAudioData(uri), timeout]);
     return Array.isArray(analysis?.segments) && analysis.segments.length ? analysis.segments : null;
   } catch (err) {
     console.warn("[videoLyrics]", err);
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

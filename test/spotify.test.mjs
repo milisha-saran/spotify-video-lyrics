@@ -37,3 +37,9 @@ test("currentTrackInfo gives the video uri for a video", async () => {
   globalThis.Spicetify = { Player: { data: { item: { uri: "spotify:track:vid", mediaType: "video", metadata: { audio_association: "spotify:track:aud" } } } } };
   assert.deepEqual(currentTrackInfo(), { uri: "spotify:track:aud", hasVideo: true, videoUri: "spotify:track:vid" });
 });
+
+test("fetchAudioAnalysis gives up after the timeout", async () => {
+  const { fetchAudioAnalysis } = await import("../src/spotify.js");
+  globalThis.Spicetify = { getAudioData: () => new Promise(() => {}) };
+  assert.equal(await fetchAudioAnalysis("spotify:track:x", 50), null);
+});

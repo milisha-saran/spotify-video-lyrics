@@ -26,7 +26,17 @@ function alignTooLong(segments) {
   return last.start + last.duration > ALIGN_MAX_SEC;
 }
 
+// Never throws: a bad analysis must fall back to unshifted lyrics, not block them.
 export function alignAudioToVideo(audioSegs, videoSegs) {
+  try {
+    return alignOrNull(audioSegs, videoSegs);
+  } catch (err) {
+    console.warn("[videoLyrics]", err);
+    return null;
+  }
+}
+
+function alignOrNull(audioSegs, videoSegs) {
   if (!audioSegs?.length || !videoSegs?.length) return null;
   if (alignTooLong(audioSegs) || alignTooLong(videoSegs)) return null;
   const A = alignFrames(audioSegs);
