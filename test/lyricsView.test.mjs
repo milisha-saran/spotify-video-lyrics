@@ -91,3 +91,26 @@ test("lyrics replace the loading message", () => {
   assert.equal(view.el.children.length, 2);
   assert.equal(view.el.children[0].textContent, "a");
 });
+
+test("instrumental shows the Instrumental message", () => {
+  const view = createLyricsView(createFakeDocument(), () => {});
+  view.setLyrics({ synced: false, lines: [], instrumental: true, source: "LRCLIB" });
+  assert.equal(view.el.children[0].textContent, "Instrumental");
+});
+
+test("LRCLIB lyrics end with a credit line that does not shift highlighting", () => {
+  const view = createLyricsView(createFakeDocument(), () => {});
+  view.setLyrics({ ...synced, source: "LRCLIB" });
+  const last = view.el.children[view.el.children.length - 1];
+  assert.ok(last.classList.contains("vl-source"));
+  assert.equal(last.textContent, "Lyrics from LRCLIB");
+  view.setPosition(5200);
+  assert.ok(view.el.children[1].classList.contains("vl-current"));
+  assert.ok(!last.classList.contains("vl-current"));
+});
+
+test("Spotify lyrics have no credit line", () => {
+  const view = createLyricsView(createFakeDocument(), () => {});
+  view.setLyrics(synced);
+  assert.ok(view.el.children.every((child) => !child.classList.contains("vl-source")));
+});

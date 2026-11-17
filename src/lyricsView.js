@@ -8,6 +8,7 @@ const VL_CSS = `
 .vl-line.vl-current { color: var(--text-base, #fff); font-weight: 700; opacity: 1; }
 .vl-lyrics.vl-synced .vl-line { cursor: pointer; }
 .vl-empty { color: var(--text-subdued, #a7a7a7); padding: 16px 0; }
+.vl-source { color: var(--text-subdued, #a7a7a7); font-size: 12px; padding: 24px 0 8px; }
 `;
 
 export function createLyricsView(doc, onSeek) {
@@ -44,6 +45,10 @@ export function createLyricsView(doc, onSeek) {
       showMessage("No lyrics for this song");
       return;
     }
+    if (next.instrumental) {
+      showMessage("Instrumental");
+      return;
+    }
     lineEls = next.lines.map((line) => {
       const row = doc.createElement("div");
       row.classList.add("vl-line", "vl-next");
@@ -53,7 +58,14 @@ export function createLyricsView(doc, onSeek) {
       });
       return row;
     });
-    el.replaceChildren(...lineEls);
+    const rows = [...lineEls];
+    if (next.source === "LRCLIB") {
+      const credit = doc.createElement("div");
+      credit.classList.add("vl-source");
+      credit.textContent = "Lyrics from LRCLIB";
+      rows.push(credit);
+    }
+    el.replaceChildren(...rows);
   }
 
   function setPosition(ms) {
