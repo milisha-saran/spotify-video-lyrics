@@ -1,8 +1,9 @@
 import { parseLyrics, latestOnly } from "./lyrics.js";
+import { fetchLrclib } from "./lrclib.js";
 import { createIdleTracker } from "./idle.js";
 import { createDirector } from "./director.js";
 import { createLyricsView } from "./lyricsView.js";
-import { currentTrackInfo, fetchLyrics, moveVideoToMiddle, exitCinemaIfOpen, showLyricsInMiddle, middleShowsLyrics, openQueuePanel, mountLyricsTab, selectTab } from "./spotify.js";
+import { currentTrackInfo, currentTrackMeta, fetchLyrics, moveVideoToMiddle, exitCinemaIfOpen, showLyricsInMiddle, middleShowsLyrics, openQueuePanel, mountLyricsTab, selectTab } from "./spotify.js";
 
 function warn(err) {
   console.warn("[videoLyrics]", err);
@@ -28,7 +29,14 @@ function start() {
       warn(err);
     }
   });
-  const fetchLatest = latestOnly(fetchLyrics);
+  // Spotify first; LRCLIB only when Spotify has nothing. One call, so latestOnly drops both together.
+  async function fetchAny(uri) {
+    const spotify = parseLyrics(await fetchLyrics(uri));
+    if (spotify) return spotify;
+    return fetchLrclib(currentTrackMeta());
+  }
+  const fetchLatest = latestOnly(fetchAny);
+  let fallbackLyrics = null;
   let acting = 0;
   let actionQueue = Promise.resolve();
 
@@ -73,10 +81,11 @@ function start() {
 
   async function loadLyrics(uri) {
     try {
-      const body = await fetchLatest(uri);
-      if (body === undefined) return;
+      const lyrics = await fetchLatest(uri);
+      if (lyrics === undefined) return;
       if (currentTrackInfo().uri !== uri) return;
-      view.setLyrics(parseLyrics(body));
+      fallbackLyrics = lyrics?.source === "LRCLIB" ? lyrics : null;
+      view.setLyrics(lyrics);
       view.setPosition(Spicetify.Player.getProgress());
     } catch (err) {
       warn(err);

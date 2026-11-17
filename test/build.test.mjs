@@ -14,3 +14,10 @@ test("build writes one wrapped script with no module syntax", () => {
   assert.match(code, /^\(function videoLyrics\(\) \{/);
   assert.doesNotThrow(() => new Function(code));
 });
+
+test("built script asks LRCLIB when Spotify has no lyrics", () => {
+  execFileSync(process.execPath, ["build.mjs"], { cwd: root });
+  const code = readFileSync(new URL("../dist/videoLyrics.js", import.meta.url), "utf8");
+  assert.match(code, /https:\/\/lrclib\.net\/api/);
+  assert.match(code, /fetchLrclib\(currentTrackMeta\(\)\)/);
+});

@@ -25,6 +25,22 @@ export function currentTrackInfo() {
   }
 }
 
+// Only these four fields leave the machine, for the LRCLIB lookup.
+export function currentTrackMeta() {
+  try {
+    const item = Spicetify.Player.data?.item;
+    if (!item) return null;
+    const ms = Number(item.duration?.milliseconds) || Number(Spicetify.Player.getDuration());
+    const title = item.name;
+    const artist = item.artists?.[0]?.name;
+    if (!title || !artist || !(ms > 0)) return null;
+    return { title, artist, album: item.album?.name || "", durationSec: ms / 1000 };
+  } catch (err) {
+    console.warn("[videoLyrics]", err);
+    return null;
+  }
+}
+
 export async function fetchLyrics(uri) {
   try {
     if (!uri) return null;
