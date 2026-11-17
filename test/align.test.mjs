@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { alignFrames, alignAudioToVideo, shiftLyricTimes } from "../src/align.js";
+import { alignFrames, alignAudioToVideo, shiftLyricTimes, lyricsForPlayback } from "../src/align.js";
 
 function rng(seed) {
   return () => {
@@ -68,4 +68,44 @@ test("shiftLyricTimes leaves unsynced lyrics and null alone", () => {
 test("malformed segments give null instead of throwing", () => {
   const bad = [{ start: 0, duration: 1 }];
   assert.equal(alignAudioToVideo(bad, randomSegs(10, 1)), null);
+});
+
+const synced = (source) => ({ synced: true, source, lines: [{ startMs: 10000, text: "a" }] });
+const plus50 = (sec) => sec + 50;
+function playback({ spotify = null, fallback = null, hasVideo = true, audioUri = "spotify:track:a" } = {}) {
+  return {
+    fetchSpotify: async () => spotify,
+    fetchFallback: async () => fallback,
+    trackInfo: () => ({ uri: audioUri, hasVideo, videoUri: hasVideo ? "spotify:track:v" : null }),
+    timeMap: async () => plus50,
+  };
+}
+
+test("lyricsForPlayback shifts Spotify lyrics on a video", async () => {
+  const out = await lyricsForPlayback("spotify:track:a", playback({ spotify: synced("Spotify") }));
+  assert.equal(out.lines[0].startMs, 60000);
+});
+test("lyricsForPlayback shifts LRCLIB lyrics on a video: they are timed to the audio track", async () => {
+  const out = await lyricsForPlayback("spotify:track:a", playback({ fallback: synced("LRCLIB") }));
+  assert.equal(out.source, "LRCLIB");
+  assert.equal(out.lines[0].startMs, 60000);
+});
+test("lyricsForPlayback leaves audio-only songs and unsynced lyrics alone", async () => {
+  const audio = await lyricsForPlayback("spotify:track:a", playback({ fallback: synced("LRCLIB"), hasVideo: false }));
+  assert.equal(audio.lines[0].startMs, 10000);
+  const plain = { synced: false, source: "LRCLIB", lines: [{ startMs: null, text: "p" }] };
+  assert.equal(await lyricsForPlayback("spotify:track:a", playback({ fallback: plain })), plain);
+});
+test("lyricsForPlayback does not shift when the track changed mid-fetch, or with no map", async () => {
+  const moved = await lyricsForPlayback("spotify:track:a", playback({ spotify: synced("Spotify"), audioUri: "spotify:track:other" }));
+  assert.equal(moved.lines[0].startMs, 10000);
+  const deps = { ...playback({ spotify: synced("Spotify") }), timeMap: async () => null };
+  assert.equal((await lyricsForPlayback("spotify:track:a", deps)).lines[0].startMs, 10000);
+});
+test("lyricsForPlayback: a failed Spotify fetch skips LRCLIB; no lyrics at all is null", async () => {
+  let asked = false;
+  const failed = { ...playback(), fetchSpotify: async () => { throw new Error("offline"); }, fetchFallback: async () => { asked = true; } };
+  assert.equal(await lyricsForPlayback("spotify:track:a", failed), null);
+  assert.equal(asked, false);
+  assert.equal(await lyricsForPlayback("spotify:track:a", playback()), null);
 });

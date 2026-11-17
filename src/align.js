@@ -90,3 +90,20 @@ export function shiftLyricTimes(parsed, mapFn) {
   });
   return { ...parsed, lines };
 }
+
+// Spotify's lyrics and LRCLIB's are both timed to the album audio (every LRCLIB record for
+// "Pyramid Song" is the audio track's 289 s), so on a video both move onto the video's timeline.
+// fetchSpotify rejects when Spotify's request failed: then LRCLIB must not cover real lyrics.
+export async function lyricsForPlayback(uri, { fetchSpotify, fetchFallback, trackInfo, timeMap }) {
+  let lyrics;
+  try {
+    lyrics = (await fetchSpotify(uri)) || (await fetchFallback());
+  } catch (err) {
+    return null;
+  }
+  if (!lyrics) return null;
+  const info = trackInfo();
+  if (!lyrics.synced || !info.hasVideo || info.uri !== uri) return lyrics;
+  const map = await timeMap(uri, info.videoUri);
+  return map ? shiftLyricTimes(lyrics, map) : lyrics;
+}

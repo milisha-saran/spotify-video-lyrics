@@ -14,7 +14,7 @@ The extension waits until you are idle before it moves things into the middle. Y
 - It acts only when a video actually plays. Many songs have a video but play as audio. The extension treats them as songs without a video. Switch one song to its video once. In testing, Spotify then played the video for later songs that have one, for the rest of that session.
 - A tab you pick by hand stays until the next song.
 - Click a lyric line to jump to that point in the song.
-- **Lyrics follow the video.** Spotify's lyrics are timed to a song's audio, but a music video often has its own intro, cuts or ending. For a video, the extension lines up the video with the audio using Spotify's own audio analysis, then moves each lyric line to its time in the video. If that analysis is missing, lyrics show at their audio times.
+- **Lyrics follow the video.** Lyrics, from Spotify or LRCLIB, are timed to a song's audio, but a music video often has its own intro, cuts or ending. For a video, the extension lines up the video with the audio using Spotify's own audio analysis, then moves each lyric line to its time in the video. If that analysis is missing, lyrics show at their audio times.
 - **A song Spotify has no lyrics for.** The extension looks it up on [LRCLIB](https://lrclib.net), a free lyrics database. It shows those lyrics in the sidebar Lyrics tab, and over Spotify's empty lyrics page ("You'll have to guess the lyrics for this one") in the middle. A "Lyrics from LRCLIB" line marks them. If LRCLIB has nothing either, you see Spotify's message.
 
 ## Install

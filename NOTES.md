@@ -369,6 +369,8 @@ await Spicetify.CosmosAsync.get(
   `duration`, 12 `pitches`, 12 `timbre`) for both the video uri and the audio uri. **CONFIRMED.**
 - Offsets on seven videos ranged from -2 s to +51 s, with cut endings on some. Length
   difference does not predict them. Details: `work/analysis/2026-11-17-video-lyrics-alignment/`.
+- LRCLIB lyrics follow the album audio too. All 20 LRCLIB records for "Pyramid Song"
+  (Radiohead) are 289 s, the audio track's length, so they get the same shift on a video.
 
 ## Other notes
 

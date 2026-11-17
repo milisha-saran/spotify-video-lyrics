@@ -1,6 +1,6 @@
 import { parseLyrics, latestOnly } from "./lyrics.js";
 import { fetchLrclib } from "./lrclib.js";
-import { alignAudioToVideo, shiftLyricTimes } from "./align.js";
+import { alignAudioToVideo, lyricsForPlayback } from "./align.js";
 import { createIdleTracker } from "./idle.js";
 import { createDirector } from "./director.js";
 import { createLyricsView } from "./lyricsView.js";
@@ -34,17 +34,17 @@ function start() {
   const middleView = createLyricsView(document, seek);
   const overlay = mountMiddleOverlay(middleView);
   // Spotify first; LRCLIB only when Spotify has nothing. One call, so latestOnly drops both together.
-  async function fetchAny(uri) {
-    const body = await fetchLyrics(uri);
-    if (body === LYRICS_FETCH_FAILED) return null;
-    const spotify = parseLyrics(body);
-    if (spotify) {
-      const info = currentTrackInfo();
-      if (!spotify.synced || !info.hasVideo || info.uri !== uri) return spotify;
-      const map = await videoTimeMap(uri, info.videoUri);
-      return map ? shiftLyricTimes(spotify, map) : spotify;
-    }
-    return fetchLrclib(currentTrackMeta());
+  function fetchAny(uri) {
+    return lyricsForPlayback(uri, {
+      async fetchSpotify(id) {
+        const body = await fetchLyrics(id);
+        if (body === LYRICS_FETCH_FAILED) throw new Error("Spotify lyrics fetch failed");
+        return parseLyrics(body);
+      },
+      fetchFallback: () => fetchLrclib(currentTrackMeta()),
+      trackInfo: currentTrackInfo,
+      timeMap: videoTimeMap,
+    });
   }
   // Spotify's lyrics for a video are timed to its audio track; the video has its own intro and edits.
   const videoMaps = new Map();
