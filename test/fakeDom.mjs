@@ -6,6 +6,12 @@ class FakeElement {
     this.textContent = "";
     this.scrolls = [];
     this.listeners = {};
+    const props = new Map();
+    this.style = {
+      setProperty: (k, v) => props.set(k, String(v)),
+      removeProperty: (k) => props.delete(k),
+      getPropertyValue: (k) => props.get(k) ?? "",
+    };
     const set = new Set();
     this.classes = set;
     this.classList = {

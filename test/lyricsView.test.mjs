@@ -114,3 +114,15 @@ test("Spotify lyrics have no credit line", () => {
   view.setLyrics(synced);
   assert.ok(view.el.children.every((child) => !child.classList.contains("vl-source")));
 });
+
+test("setColors sets the color variables and null clears them", () => {
+  const view = createLyricsView(createFakeDocument(), () => {});
+  view.setColors({ background: "rgba(101, 0, 0, 1)", active: "rgba(255, 255, 255, 1)", inactive: "rgba(255, 190, 175, 1)" });
+  assert.equal(view.el.style.getPropertyValue("--vl-bg"), "rgba(101, 0, 0, 1)");
+  assert.equal(view.el.style.getPropertyValue("--vl-active"), "rgba(255, 255, 255, 1)");
+  assert.equal(view.el.style.getPropertyValue("--vl-inactive"), "rgba(255, 190, 175, 1)");
+  assert.ok(view.el.classList.contains("vl-colored"));
+  view.setColors(null);
+  assert.equal(view.el.style.getPropertyValue("--vl-bg"), "");
+  assert.ok(!view.el.classList.contains("vl-colored"));
+});

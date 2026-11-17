@@ -2,14 +2,15 @@ import { currentLineIndex } from "./lyrics.js";
 
 const VL_CSS = `
 .vl-lyrics { padding: 16px; overflow-y: auto; font-size: 18px; line-height: 1.5; }
-.vl-line { padding: 6px 0; color: var(--text-subdued, #a7a7a7); }
-.vl-line.vl-past { color: var(--text-subdued, #a7a7a7); opacity: 0.5; }
-.vl-line.vl-next { color: var(--text-subdued, #a7a7a7); }
-.vl-line.vl-current { color: var(--text-base, #fff); font-weight: 700; opacity: 1; }
+.vl-line { padding: 6px 0; color: var(--vl-inactive, var(--text-subdued, #a7a7a7)); }
+.vl-line.vl-past { color: var(--vl-inactive, var(--text-subdued, #a7a7a7)); opacity: 0.5; }
+.vl-line.vl-next { color: var(--vl-inactive, var(--text-subdued, #a7a7a7)); }
+.vl-line.vl-current { color: var(--vl-active, var(--text-base, #fff)); font-weight: 700; opacity: 1; }
 .vl-lyrics.vl-synced .vl-line { cursor: pointer; }
-.vl-empty { color: var(--text-subdued, #a7a7a7); padding: 16px 0; }
+.vl-empty { color: var(--vl-inactive, var(--text-subdued, #a7a7a7)); padding: 16px 0; }
+.vl-lyrics.vl-colored { background: var(--vl-bg); border-radius: 8px; min-height: 100%; box-sizing: border-box; }
 .vl-lyrics.vl-middle { padding: 32px 48px; font-size: 28px; font-weight: 700; line-height: 1.4; }
-.vl-source { color: var(--text-subdued, #a7a7a7); font-size: 12px; padding: 24px 0 8px; }
+.vl-source { color: var(--vl-inactive, var(--text-subdued, #a7a7a7)); font-size: 12px; padding: 24px 0 8px; }
 `;
 
 export function createLyricsView(doc, onSeek) {
@@ -87,5 +88,14 @@ export function createLyricsView(doc, onSeek) {
     showMessage("Loading lyrics…");
   }
 
-  return { el, setLyrics, setPosition, showLoading };
+  const COLOR_VARS = { background: "--vl-bg", active: "--vl-active", inactive: "--vl-inactive" };
+  function setColors(colors) {
+    for (const [key, name] of Object.entries(COLOR_VARS)) {
+      if (colors) el.style.setProperty(name, colors[key]);
+      else el.style.removeProperty(name);
+    }
+    el.classList.toggle("vl-colored", !!colors);
+  }
+
+  return { el, setLyrics, setPosition, showLoading, setColors };
 }

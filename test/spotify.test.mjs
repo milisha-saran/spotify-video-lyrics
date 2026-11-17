@@ -43,3 +43,35 @@ test("fetchAudioAnalysis gives up after the timeout", async () => {
   globalThis.Spicetify = { getAudioData: () => new Promise(() => {}) };
   assert.equal(await fetchAudioAnalysis("spotify:track:x", 50), null);
 });
+
+test("fetchLyricsColors asks for the image's dynamic colors and picks the lyrics set", async () => {
+  const { fetchLyricsColors } = await import("../src/spotify.js");
+  const c = (red, green, blue) => ({ red, green, blue, alpha: 255 });
+  const calls = [];
+  globalThis.Spicetify = { GraphQL: {
+    Definitions: { getDynamicColorsByUris: "def" },
+    Request: async (def, vars) => {
+      calls.push([def, vars]);
+      return { data: { dynamicColors: [{ dark: { higherContrast: {
+        backgroundBase: c(40, 72, 96), textBase: c(255, 255, 255), textSubdued: c(200, 210, 220) } } }] } };
+    },
+  } };
+  assert.deepEqual(await fetchLyricsColors("spotify:image:abc"),
+    { background: "rgba(40, 72, 96, 1)", active: "rgba(255, 255, 255, 1)", inactive: "rgba(200, 210, 220, 1)" });
+  assert.deepEqual(calls, [["def", { imageUris: ["spotify:image:abc"] }]]);
+});
+test("fetchLyricsColors is null on error, timeout or no image", async () => {
+  const { fetchLyricsColors } = await import("../src/spotify.js");
+  globalThis.Spicetify = { GraphQL: { Definitions: { getDynamicColorsByUris: "d" }, Request: async () => { throw new Error("x"); } } };
+  assert.equal(await fetchLyricsColors("spotify:image:err"), null);
+  globalThis.Spicetify = { GraphQL: { Definitions: { getDynamicColorsByUris: "d" }, Request: () => new Promise(() => {}) } };
+  assert.equal(await fetchLyricsColors("spotify:image:hang", 50), null);
+  assert.equal(await fetchLyricsColors(null), null);
+});
+test("currentImageUri gives the item's first spotify:image uri", async () => {
+  const { currentImageUri } = await import("../src/spotify.js");
+  globalThis.Spicetify = { Player: { data: { item: { images: [{ url: "https://x" }, { url: "spotify:image:big" }] } } } };
+  assert.equal(currentImageUri(), "spotify:image:big");
+  globalThis.Spicetify = { Player: { data: { item: {} } } };
+  assert.equal(currentImageUri(), null);
+});
