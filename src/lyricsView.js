@@ -8,6 +8,7 @@ const VL_CSS = `
 .vl-line.vl-current { color: var(--text-base, #fff); font-weight: 700; opacity: 1; }
 .vl-lyrics.vl-synced .vl-line { cursor: pointer; }
 .vl-empty { color: var(--text-subdued, #a7a7a7); padding: 16px 0; }
+.vl-lyrics.vl-middle { padding: 32px 48px; font-size: 28px; font-weight: 700; line-height: 1.4; }
 .vl-source { color: var(--text-subdued, #a7a7a7); font-size: 12px; padding: 24px 0 8px; }
 `;
 

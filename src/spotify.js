@@ -106,6 +106,31 @@ export async function openQueuePanel() {
   }
 }
 
+// Covers Spotify's empty lyrics page ("Couldn't load the lyrics…", "You'll have to guess…")
+// with LRCLIB lyrics. The container is position:relative and is the whole middle (NOTES.md section 13).
+export function mountMiddleOverlay(view) {
+  view.el.classList.add("vl-middle");
+  Object.assign(view.el.style, {
+    position: "absolute",
+    inset: "0",
+    zIndex: "1",
+    background: "var(--background-base, #121212)",
+    display: "none",
+  });
+  return {
+    update(show) {
+      try {
+        const host = document.querySelector("#main-view .main-view-container");
+        if (show && host && view.el.parentElement !== host) host.appendChild(view.el);
+        const display = show && host ? "" : "none";
+        if (view.el.style.display !== display) view.el.style.display = display;
+      } catch (err) {
+        console.warn("[videoLyrics]", err);
+      }
+    },
+  };
+}
+
 let tabs = null;
 
 export function mountLyricsTab({ view, onPicked }) {

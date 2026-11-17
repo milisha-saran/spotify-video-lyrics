@@ -345,6 +345,21 @@ await Spicetify.CosmosAsync.get(
   `{code: 404, message: "Failed to fetch", error, stack}`. Check for `lyrics` in the
   response. Do not rely on a throw.
 
+## 13. Empty lyrics page and LRCLIB (Spotify 1.3.9.2055, 2026-11-17)
+
+- With no Spotify lyrics, `/lyrics` shows one of several messages: "You'll have to guess
+  the lyrics for this one.", "You caught us, we're still working on getting lyrics for
+  this one.", or (on a failed fetch) "Couldn't load the lyrics for this song. Try again
+  later." All three sit in `#main-view main`. **CONFIRMED.**
+- `#main-view .main-view-container` is `position: relative` and covers the whole middle
+  (602x771 at the test window size). An absolute `inset: 0` child covers the page. **CONFIRMED.**
+- The color-lyrics endpoint returns an empty body (no `lyrics`) for songs without lyrics,
+  and sometimes fails for songs that have them. A song that fails once can load later.
+- `Spicetify.Player.data.item.duration.milliseconds` holds the length. `item.name`,
+  `item.artists[0].name`, `item.album.name` hold title, artist, album. **CONFIRMED.**
+- `fetch("https://lrclib.net/api/...")` works from the xpui page: Spotify's CSP allows
+  it and LRCLIB sends `access-control-allow-origin: *`. **CONFIRMED.**
+
 ## Other notes
 
 - `Spicetify.Player.data` and `Spicetify.Platform` were ready on the first poll after load.
@@ -353,3 +368,8 @@ await Spicetify.CosmosAsync.get(
   in Spotify, skipping validation". Patching otherwise succeeded.
 - Spotify 1.3.8.620 replaced the patched 1.3.4.258 when it restarted. Expect each
   Spotify update to remove the patch until `spicetify backup apply` runs again.
+- 2026-11-17: Spotify updated to 1.3.9.2055. `spicetify backup apply` run from the Claude
+  app failed at "Copying raw assets": macOS refused writes inside `Spotify.app`
+  ("Operation not permitted", also outside Claude's sandbox) after the old `Apps` folder
+  was removed. Running `spicetify apply` from Terminal.app worked. The stock backup is in
+  `~/.local/state/spicetify/Backup`.

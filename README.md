@@ -14,6 +14,7 @@ The extension waits until you are idle before it moves things into the middle. Y
 - It acts only when a video actually plays. Many songs have a video but play as audio. The extension treats them as songs without a video. Switch one song to its video once. In testing, Spotify then played the video for later songs that have one, for the rest of that session.
 - A tab you pick by hand stays until the next song.
 - Click a lyric line to jump to that point in the song.
+- **A song Spotify has no lyrics for.** The extension looks it up on [LRCLIB](https://lrclib.net), a free lyrics database. It shows those lyrics in the sidebar Lyrics tab, and over Spotify's empty lyrics page ("You'll have to guess the lyrics for this one") in the middle. A "Lyrics from LRCLIB" line marks them. If LRCLIB has nothing either, you see Spotify's message.
 
 ## Install
 
@@ -47,7 +48,7 @@ spicetify restore
 
 ## After a Spotify update
 
-Spotify replaces the patched app when it updates itself. It did this once during development. Patch it again:
+Spotify replaces the patched app when it updates itself. It did this twice during development. Patch it again from the macOS Terminal app (newer macOS versions may block other apps from changing Spotify):
 
 ```bash
 spicetify backup apply
@@ -71,4 +72,6 @@ node --test
 
 - The extension relies on Spotify's internal page structure, such as the `#queue-tab` id. A Spotify UI update can break the Lyrics tab.
 - Only songs with a Spotify music video get video. YouTube videos are not supported.
-- Lyrics come from Spotify. A song with no Spotify lyrics shows "No lyrics for this song".
+- Lyrics come from Spotify, then LRCLIB. A song neither has shows "No lyrics for this song".
+- For songs Spotify has no lyrics for, the extension sends the song's title, artist, album and length to lrclib.net. Nothing else.
+- An LRCLIB result more than 3 seconds longer or shorter than the song is ignored, so a song with an unusual length may get no lyrics.

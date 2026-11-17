@@ -3,7 +3,7 @@ import { fetchLrclib } from "./lrclib.js";
 import { createIdleTracker } from "./idle.js";
 import { createDirector } from "./director.js";
 import { createLyricsView } from "./lyricsView.js";
-import { currentTrackInfo, currentTrackMeta, fetchLyrics, moveVideoToMiddle, exitCinemaIfOpen, showLyricsInMiddle, middleShowsLyrics, openQueuePanel, mountLyricsTab, selectTab } from "./spotify.js";
+import { currentTrackInfo, currentTrackMeta, fetchLyrics, moveVideoToMiddle, exitCinemaIfOpen, showLyricsInMiddle, middleShowsLyrics, mountMiddleOverlay, openQueuePanel, mountLyricsTab, selectTab } from "./spotify.js";
 
 function warn(err) {
   console.warn("[videoLyrics]", err);
@@ -22,13 +22,16 @@ function ready() {
 function start() {
   const idle = createIdleTracker({ idleMs: 30000 });
   const director = createDirector();
-  const view = createLyricsView(document, (ms) => {
+  function seek(ms) {
     try {
       Spicetify.Player.seek(ms);
     } catch (err) {
       warn(err);
     }
-  });
+  }
+  const view = createLyricsView(document, seek);
+  const middleView = createLyricsView(document, seek);
+  const overlay = mountMiddleOverlay(middleView);
   // Spotify first; LRCLIB only when Spotify has nothing. One call, so latestOnly drops both together.
   async function fetchAny(uri) {
     const spotify = parseLyrics(await fetchLyrics(uri));
@@ -37,6 +40,10 @@ function start() {
   }
   const fetchLatest = latestOnly(fetchAny);
   let fallbackLyrics = null;
+
+  function updateOverlay() {
+    overlay.update(!!fallbackLyrics && !currentTrackInfo().hasVideo && middleShowsLyrics());
+  }
   let acting = 0;
   let actionQueue = Promise.resolve();
 
@@ -86,7 +93,10 @@ function start() {
       if (currentTrackInfo().uri !== uri) return;
       fallbackLyrics = lyrics?.source === "LRCLIB" ? lyrics : null;
       view.setLyrics(lyrics);
+      middleView.setLyrics(lyrics);
       view.setPosition(Spicetify.Player.getProgress());
+      middleView.setPosition(Spicetify.Player.getProgress());
+      updateOverlay();
     } catch (err) {
       warn(err);
     }
@@ -100,6 +110,8 @@ function start() {
       let info = currentTrackInfo();
       // Clear old lines now: clicking one would seek the new song to the old song's time.
       view.showLoading();
+      fallbackLyrics = null;
+      updateOverlay();
       if (!info.hasVideo) run(["exitCinema"]);
       // Lyrics filling the middle means the user is watching, not browsing,
       // so a video can take their place without waiting for idle.
@@ -129,6 +141,7 @@ function start() {
   try {
     Spicetify.Platform.History.listen(() => {
       if (!acting) idle.markActive();
+      updateOverlay();
     });
   } catch (err) {
     warn(err);
@@ -143,12 +156,17 @@ function start() {
   Spicetify.Player.addEventListener("songchange", onTrack);
   Spicetify.Player.addEventListener("onprogress", (event) => {
     try {
-      view.setPosition(event?.data ?? Spicetify.Player.getProgress());
+      const ms = event?.data ?? Spicetify.Player.getProgress();
+      view.setPosition(ms);
+      middleView.setPosition(ms);
     } catch (err) {
       warn(err);
     }
   });
-  setInterval(() => handle({ type: "tick", idle: idle.isIdle() }), 1000);
+  setInterval(() => {
+    handle({ type: "tick", idle: idle.isIdle() });
+    updateOverlay();
+  }, 1000);
   onTrack();
 }
 
