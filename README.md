@@ -29,14 +29,14 @@ https://github.com/user-attachments/assets/c349757c-69ad-4436-b8e0-89439a88d22b
 ## 🖼️ How it looks
 
 ```text
-┌──────────────────────────────────────────┬─────────────────────────┐
-│                                          │  Lyrics   Queue  Recent │
-│                                          │  ─────                  │
-│                                          │  Woke up, the sun…      │  ◀ current line
-│             🎬  music video              │  Warm beach from palm…  │
-│                                          │  You close your eyes…   │
-│                                          │                         │
-└──────────────────────────────────────────┴─────────────────────────┘
++------------------------------------------+--------------------------+
+|                                          | Lyrics   Queue   Recent  |
+|                                          | ------                   |
+|                                          | Woke up, the sun ...     |  <- current line
+|               MUSIC VIDEO                | Warm beach from palm ... |
+|                                          | You close your eyes ...  |
+|                                          |                          |
++------------------------------------------+--------------------------+
 ```
 
 > 💡 The mod rearranges things only after 30 seconds without input, or when Spotify isn't the front window. It never moves things while you're browsing.
@@ -47,16 +47,16 @@ https://github.com/user-attachments/assets/c349757c-69ad-4436-b8e0-89439a88d22b
 
 ```mermaid
 flowchart LR
-    A([Song starts]) --> B{Spotify has<br/>lyrics?}
-    B -- yes --> C[Spotify lyrics]
-    B -- no --> D[Look up on LRCLIB]
-    C --> E{Playing as<br/>a video?}
+    A(["Song starts"]) --> B{"Spotify has lyrics?"}
+    B -- yes --> C["Spotify lyrics"]
+    B -- no --> D["Look up on LRCLIB"]
+    C --> E{"Playing as a video?"}
     D --> E
-    E -- yes --> F[Shift each line to<br/>the video's timing]
-    E -- no --> G[Keep audio timing]
-    F --> H[Color with the<br/>song's palette]
+    E -- yes --> F["Shift each line to the video timing"]
+    E -- no --> G["Keep the audio timing"]
+    F --> H["Color with the song palette"]
     G --> H
-    H --> I([Show lyrics])
+    H --> I(["Show lyrics"])
 ```
 
 ---
