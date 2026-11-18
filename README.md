@@ -1,4 +1,4 @@
-# videoLyrics
+# Spotify Lyrics Mod
 
 A Spicetify extension. It keeps a Spotify music video in the middle of the window and adds a Lyrics tab next to Queue and Recently played in the right sidebar.
 
