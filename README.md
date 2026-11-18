@@ -4,6 +4,16 @@ A Spicetify extension. It keeps a Spotify music video in the middle of the windo
 
 Built for macOS, Spotify 1.3.9.2055 (auto-updated from 1.3.4.258 and 1.3.8.620) and Spicetify CLI 2.46.4 (installed with Homebrew).
 
+## Demo
+
+[Watch the demo](docs/demo.mp4) (72 seconds, with sound). It shows five features:
+
+1. Music video and lyrics in one pane
+2. Music video and lyrics are in sync
+3. Jump to any line in the side pane
+4. Lyrics for songs Spotify doesn't provide
+5. Lyrics in the same color palette as Spotify
+
 ## What it does
 
 The extension waits until you are idle before it moves things into the middle. You are idle after 30 seconds without a click, scroll, key press or page change in Spotify. You are also idle as soon as the Spotify window is not in front.
