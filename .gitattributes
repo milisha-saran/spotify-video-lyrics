@@ -1,0 +1,2 @@
+# Keep LF line endings on Windows checkouts too, so the build output is the same everywhere.
+* text=auto eol=lf

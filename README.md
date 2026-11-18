@@ -4,7 +4,8 @@
 
 **Music videos and synced lyrics, side by side in Spotify.**
 
-![macOS](https://img.shields.io/badge/macOS-only-black?logo=apple)
+![macOS](https://img.shields.io/badge/macOS-supported-black?logo=apple)
+![Windows](https://img.shields.io/badge/Windows-untested-0078D4?logo=windows)
 ![Spotify](https://img.shields.io/badge/Spotify-1.3.9-1DB954?logo=spotify&logoColor=white)
 ![Spicetify](https://img.shields.io/badge/Spicetify-2.46-orange)
 
@@ -63,28 +64,33 @@ flowchart LR
 
 ## 🚀 Install
 
-> Requires [Spicetify](https://spicetify.app). First time patching Spotify? Run `spicetify backup apply` once.
+> Requires [Spicetify](https://spicetify.app/docs/advanced-usage/installation) and [Node.js](https://nodejs.org) 18 or newer. First time patching Spotify? Run `spicetify backup apply` once.
+
+The same command works on macOS (Terminal) and Windows (PowerShell):
 
 ```bash
-node build.mjs && cp dist/videoLyrics.js ~/.config/spicetify/Extensions/ \
-  && spicetify config extensions videoLyrics.js && spicetify apply
+node install.mjs
 ```
+
+It builds the mod, copies it into Spicetify's Extensions folder, turns it on and applies.
 
 <details>
 <summary><b>Spotify updated and the mod disappeared?</b></summary>
 
-Spotify replaces the patched app when it updates. Patch it again from the macOS **Terminal** app:
+Spotify replaces the patched app when it updates. Patch it again:
 
 ```bash
 spicetify backup apply
 ```
+
+On macOS, run this from the **Terminal** app. Newer macOS versions may block other apps from changing Spotify.
 </details>
 
 <details>
 <summary><b>Uninstall</b></summary>
 
 ```bash
-spicetify config extensions videoLyrics.js- && spicetify apply
+node install.mjs --remove
 ```
 
 To go back to stock Spotify: `spicetify restore`.
@@ -106,6 +112,7 @@ node --test      # run the tests (no npm install needed)
 
 - A Spotify UI update can break the Lyrics tab. The mod relies on Spotify's page layout.
 - Only Spotify's own music videos play. YouTube isn't supported.
+- Windows support is untested so far. It uses the same code as macOS, but Spotify's Windows app may differ.
 - For songs without Spotify lyrics, the mod sends the title, artist, album and length to lrclib.net. Nothing else.
 - LRCLIB results more than 3 seconds off the song's length are skipped.
 - Videos over 10 minutes show lyrics at the audio's timing.
