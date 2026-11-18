@@ -6,7 +6,9 @@ Built for macOS, Spotify 1.3.9.2055 (auto-updated from 1.3.4.258 and 1.3.8.620) 
 
 ## Demo
 
-[Watch the demo](docs/demo.mp4) (72 seconds, with sound). It shows five features:
+https://github.com/user-attachments/assets/c349757c-69ad-4436-b8e0-89439a88d22b
+
+The 72-second demo, with sound, shows five features:
 
 1. Music video and lyrics in one pane
 2. Music video and lyrics are in sync
