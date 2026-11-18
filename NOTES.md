@@ -372,6 +372,17 @@ await Spicetify.CosmosAsync.get(
 - LRCLIB lyrics follow the album audio too. All 20 LRCLIB records for "Pyramid Song"
   (Radiohead) are 289 s, the audio track's length, so they get the same shift on a video.
 
+## 15. Lyrics page colors (Spotify 1.3.9.2055, 2026-11-17)
+
+- The lyrics response's `colors` (`background`, `text`, `highlightText`, signed ARGB ints) is not
+  what the page shows. Raw background (210, 64, 42) showed as (101, 0, 0); text is black but showed pink.
+- The page sets `--lyrics-color-*` from `dynamicColors.higherContrast` (`xpui-modules.js`).
+- `Spicetify.GraphQL.Request(Definitions.getDynamicColorsByUris, {imageUris: [item.images[0].url]})`
+  (a `spotify:image:` uri) returns `dynamicColors[0].dark.higherContrast` with `backgroundBase`,
+  `textBase`, `textSubdued` as `{red, green, blue, alpha}`. On "Fairytale Of New York - Live" these
+  were (101,0,0), white, (255,190,175): exactly the page's colors. **CONFIRMED.**
+- `Spicetify.colorExtractor(trackUri)` returned null for every track tried.
+
 ## Other notes
 
 - `Spicetify.Player.data` and `Spicetify.Platform` were ready on the first poll after load.

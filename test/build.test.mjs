@@ -28,3 +28,10 @@ test("built script aligns lyrics to music videos", () => {
   assert.match(code, /alignAudioToVideo\(/);
   assert.match(code, /return lyricsForPlayback\(uri, /);
 });
+test("built script colors lyrics like Spotify's lyrics page", () => {
+  execFileSync(process.execPath, ["build.mjs"], { cwd: root });
+  const code = readFileSync(new URL("../dist/videoLyrics.js", import.meta.url), "utf8");
+  assert.match(code, /function pickLyricsColors\(/);
+  assert.match(code, /getDynamicColorsByUris/);
+  assert.match(code, /middleView\.setColors\(colors\)/);
+});

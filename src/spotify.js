@@ -1,3 +1,5 @@
+import { pickLyricsColors } from "./colors.js";
+
 const LYRICS_TAB_ID = "vl-lyrics-tab";
 const LYRICS_PANEL_ID = "vl-lyrics-panel";
 const SPOTIFY_TABS = { "queue-tab": "queue", "history-tab": "history" };
@@ -39,6 +41,40 @@ export async function fetchAudioAnalysis(uri, timeoutMs = 5000) {
     });
     const analysis = await Promise.race([Spicetify.getAudioData(uri), timeout]);
     return Array.isArray(analysis?.segments) && analysis.segments.length ? analysis.segments : null;
+  } catch (err) {
+    console.warn("[videoLyrics]", err);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function currentImageUri() {
+  try {
+    const images = Spicetify.Player.data?.item?.images || [];
+    return images.map((image) => image?.url).find((url) => typeof url === "string" && url.startsWith("spotify:image:")) || null;
+  } catch (err) {
+    console.warn("[videoLyrics]", err);
+    return null;
+  }
+}
+
+const lyricsColorCache = new Map();
+
+// The same request Spotify's lyrics page makes for its colors (NOTES.md section 15).
+export async function fetchLyricsColors(imageUri, timeoutMs = 5000) {
+  let timer;
+  try {
+    if (!imageUri) return null;
+    if (lyricsColorCache.has(imageUri)) return lyricsColorCache.get(imageUri);
+    const timeout = new Promise((resolve) => {
+      timer = setTimeout(() => resolve(null), timeoutMs);
+    });
+    const graphql = Spicetify.GraphQL;
+    const request = graphql.Request(graphql.Definitions.getDynamicColorsByUris, { imageUris: [imageUri] });
+    const colors = pickLyricsColors(await Promise.race([request, timeout]));
+    if (colors) lyricsColorCache.set(imageUri, colors);
+    return colors;
   } catch (err) {
     console.warn("[videoLyrics]", err);
     return null;
@@ -143,7 +179,7 @@ export function mountMiddleOverlay(view) {
     position: "absolute",
     inset: "0",
     zIndex: "1",
-    background: "var(--background-base, #121212)",
+    background: "var(--vl-bg, var(--background-base, #121212))",
     display: "none",
   });
   return {

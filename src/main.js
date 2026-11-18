@@ -4,7 +4,7 @@ import { alignAudioToVideo, lyricsForPlayback } from "./align.js";
 import { createIdleTracker } from "./idle.js";
 import { createDirector } from "./director.js";
 import { createLyricsView } from "./lyricsView.js";
-import { currentTrackInfo, currentTrackMeta, fetchLyrics, fetchAudioAnalysis, LYRICS_FETCH_FAILED, moveVideoToMiddle, exitCinemaIfOpen, showLyricsInMiddle, middleShowsLyrics, mountMiddleOverlay, openQueuePanel, mountLyricsTab, selectTab } from "./spotify.js";
+import { currentImageUri, fetchLyricsColors, currentTrackInfo, currentTrackMeta, fetchLyrics, fetchAudioAnalysis, LYRICS_FETCH_FAILED, moveVideoToMiddle, exitCinemaIfOpen, showLyricsInMiddle, middleShowsLyrics, mountMiddleOverlay, openQueuePanel, mountLyricsTab, selectTab } from "./spotify.js";
 
 function warn(err) {
   console.warn("[videoLyrics]", err);
@@ -123,10 +123,23 @@ function start() {
 
   let trackSeq = 0;
 
+  // Old colors stay until the new song's arrive, so the view does not flash grey between songs.
+  async function loadColors(seq) {
+    try {
+      const colors = await fetchLyricsColors(currentImageUri());
+      if (seq !== trackSeq) return;
+      view.setColors(colors);
+      middleView.setColors(colors);
+    } catch (err) {
+      warn(err);
+    }
+  }
+
   async function onTrack() {
     try {
       const seq = ++trackSeq;
       let info = currentTrackInfo();
+      loadColors(seq);
       // Clear old lines now: clicking one would seek the new song to the old song's time.
       view.showLoading();
       fallbackLyrics = null;
